@@ -311,7 +311,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col max-w-lg mx-auto bg-slate-950 shadow-2xl overflow-hidden relative">
+    <div className="min-h-screen flex flex-col max-w-screen-2xl mx-auto bg-slate-950 shadow-2xl overflow-hidden relative border-x border-slate-900">
       <Header 
         isDetail={!!currentProject} 
         onBack={() => { setCurrentProject(null); setInitialAction(null); }} 
@@ -321,7 +321,7 @@ const App: React.FC = () => {
         onImport={handleImportProject}
       />
       
-      <main className="flex-1 overflow-y-auto pb-20 p-4">
+      <main className="flex-1 overflow-y-auto pb-20 p-4 md:p-6 lg:p-8">
         {currentProject ? (
           <ProjectDetail 
             project={currentProject} 
