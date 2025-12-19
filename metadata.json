@@ -1,0 +1,8 @@
+{
+  "name": "Aiсмета",
+  "description": "An offline-first construction management PWA with AI-powered material and labor tracking via photo, voice, and manual input.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
