@@ -2,9 +2,6 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { EntryType } from "./types";
 
-// Always use the process.env.API_KEY string directly when initializing the GoogleGenAI client.
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
 const SYSTEM_INSTRUCTION = `Вы — эксперт по составлению строительных смет. 
 Ваша задача: анализировать входящий текст (чеки или голосовые заметки) и извлекать из них список позиций.
 Контекст: исключительно строительство, ремонт, отделка и инженерные коммуникации.
@@ -37,6 +34,7 @@ const RESPONSE_SCHEMA = {
 };
 
 export const processImage = async (base64Image: string) => {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
     contents: [
@@ -58,6 +56,7 @@ export const processImage = async (base64Image: string) => {
 };
 
 export const processVoice = async (transcript: string) => {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
     contents: `Разбери эту голосовую заметку по стройке: "${transcript}". Верни массив JSON согласно схеме.`,
@@ -72,6 +71,7 @@ export const processVoice = async (transcript: string) => {
 };
 
 export const getProjectSummary = async (entries: string) => {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
     contents: `На основе этих записей: ${entries}, предоставь краткий обзор общих затрат на материалы и работы.`,
