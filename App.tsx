@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Project, Entry, EntryType, SyncQueueItem } from './types';
-import { getProjects, saveProject, getEntriesByProject, saveEntry, getSyncQueue, removeFromSyncQueue, addToSyncQueue, deleteProject, deleteEntry, generateId, getFullProjectData } from './db';
+import { getProjects, saveProject, getEntriesByProject, saveEntry, getSyncQueue, removeFromSyncQueue, addToSyncQueue, deleteProject, deleteEntry, generateId, getFullProjectData, initDB } from './db';
 import { processImage, processVoice } from './geminiService';
 import Dashboard from './components/Dashboard';
 import ProjectDetail from './components/ProjectDetail';
@@ -69,8 +69,10 @@ const App: React.FC = () => {
           items = await processVoice(item.payload);
         }
 
+        // Удаляем временную заглушку
         await deleteEntry(item.entryId);
         
+        // Добавляем реально распознанные элементы
         for (const entryData of items) {
           const newEntry: Entry = {
             id: generateId(),
@@ -85,8 +87,23 @@ const App: React.FC = () => {
         }
 
         await removeFromSyncQueue(item.id);
-      } catch (e) {
+      } catch (e: any) {
         console.error("Sync Error:", item.id, e);
+        // Если ошибка — обновляем запись в БД, чтобы пользователь видел статус
+        const db = await initDB();
+        const tx = db.transaction('entries', 'readwrite');
+        const store = tx.objectStore('entries');
+        const req = store.get(item.entryId);
+        req.onsuccess = () => {
+          const entry = req.result;
+          if (entry) {
+            entry.processed = true;
+            entry.error = e.message || "Ошибка ИИ";
+            store.put(entry);
+          }
+        };
+        // Удаляем из очереди, чтобы не пытаться бесконечно
+        await removeFromSyncQueue(item.id);
       }
     }
     setIsSyncing(false);
@@ -154,92 +171,39 @@ const App: React.FC = () => {
     await refreshProjects();
   };
 
-  const exportAsHTML = (project: Project, entries: Entry[]) => {
-    const materials = entries.filter(e => e.type === EntryType.MATERIAL);
-    const labor = entries.filter(e => e.type === EntryType.LABOR);
-    const totalM = materials.reduce((sum, e) => sum + (e.total || 0), 0);
-    const totalL = labor.reduce((sum, e) => sum + (e.total || 0), 0);
-
-    const renderItems = (items: Entry[]) => items.map(item => `
-      <div class="item">
-        <div class="item-header">
-          <div class="item-name">${item.name || 'Без названия'}</div>
-          <div class="item-price">${(item.total || 0).toLocaleString()} ₽</div>
-        </div>
-        <div class="item-details">
-          ${item.quantity || 0} ${item.unit || ''} × ${item.price || 0} ₽ | ${item.vendor || 'Без поставщика'}
-        </div>
-        ${item.images && item.images.length > 0 ? `
-          <div class="item-photos">
-            ${item.images.map(img => `<img src="data:image/jpeg;base64,${img}" />`).join('')}
-          </div>
-        ` : ''}
-      </div>
-    `).join('');
-
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="UTF-8">
-        <title>Смета: ${project.name}</title>
-        <style>
-          body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 40px; color: #1e293b; line-height: 1.6; max-width: 1000px; margin: 0 auto; background-color: #fff; }
-          .header { border-bottom: 3px solid #10b981; padding-bottom: 24px; margin-bottom: 40px; }
-          .header h1 { margin: 0; color: #0f172a; font-size: 28px; }
-          .header p { margin: 8px 0 0; color: #64748b; font-size: 14px; }
-          .summary { display: flex; justify-content: space-around; background: #f8fafc; padding: 24px; border-radius: 16px; margin-bottom: 48px; border: 1px solid #e2e8f0; }
-          .summary div { text-align: center; }
-          .summary strong { display: block; font-size: 12px; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
-          .summary span { font-size: 20px; font-weight: 800; color: #0f172a; }
-          .section-title { font-size: 18px; font-weight: 800; border-left: 6px solid #10b981; padding-left: 14px; margin: 48px 0 24px; color: #0f172a; letter-spacing: -0.02em; }
-          .item { border-bottom: 1px solid #f1f5f9; padding: 24px 0; page-break-inside: avoid; }
-          .item-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
-          .item-name { font-weight: 700; font-size: 16px; color: #1e293b; flex: 1; margin-right: 20px; }
-          .item-price { font-weight: 800; font-size: 16px; color: #059669; white-space: nowrap; }
-          .item-details { font-size: 13px; color: #64748b; margin-top: 4px; }
-          .item-photos { display: grid; grid-template-cols: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; margin-top: 20px; }
-          .item-photos img { width: 100%; height: auto; max-height: 400px; object-fit: contain; border-radius: 12px; border: 1px solid #e2e8f0; background: #f8fafc; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
-          .footer { margin-top: 80px; font-size: 12px; color: #94a3b8; text-align: center; border-top: 1px solid #f1f5f9; padding-top: 40px; }
-          @media print { 
-            body { padding: 20px; }
-            .summary { background: none; border: 1px solid #e2e8f0; }
-            .item-photos { grid-template-cols: repeat(2, 1fr); }
-            .item-photos img { max-height: 300px; }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <h1>${project.name}</h1>
-          <p>${project.address || 'Адрес не указан'}</p>
-          <small style="color: #94a3b8; font-size: 11px;">Сформировано: ${new Date().toLocaleDateString('ru')} в приложении AiСмета</small>
-        </div>
-        <div class="summary">
-          <div><strong>МАТЕРИАЛЫ</strong> <span>${totalM.toLocaleString()} ₽</span></div>
-          <div><strong>РАБОТЫ</strong> <span>${totalL.toLocaleString()} ₽</span></div>
-          <div><strong>ИТОГО</strong> <span style="color: #10b981;">${(totalM + totalL).toLocaleString()} ₽</span></div>
-        </div>
-        ${materials.length > 0 ? `<div class="section-title">МАТЕРИАЛЫ</div>${renderItems(materials)}` : ''}
-        ${labor.length > 0 ? `<div class="section-title">РАБОТЫ</div>${renderItems(labor)}` : ''}
-        <div class="footer">AiСмета - Автономное управление строительством • ai-smeta.ru</div>
-      </body>
-      </html>
-    `;
-
-    const blob = new Blob([html], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `Smeta_${project.name}_${new Date().toISOString().slice(0,10)}.html`;
-    a.click();
-  };
-
   const handleProjectShare = async (project: Project, format: 'text' | 'html' | 'json') => {
     const { entries } = await getFullProjectData(project.id);
     
     if (format === 'html') {
-      exportAsHTML(project, entries);
+      const materials = entries.filter(e => e.type === EntryType.MATERIAL);
+      const labor = entries.filter(e => e.type === EntryType.LABOR);
+      const totalM = materials.reduce((sum, e) => sum + (e.total || 0), 0);
+      const totalL = labor.reduce((sum, e) => sum + (e.total || 0), 0);
+
+      const renderItems = (items: Entry[]) => items.map(item => `
+        <div class="item">
+          <div class="item-header">
+            <div class="item-name">${item.name || 'Без названия'}</div>
+            <div class="item-price">${(item.total || 0).toLocaleString()} ₽</div>
+          </div>
+          <div class="item-details">
+            ${item.quantity || 0} ${item.unit || ''} × ${item.price || 0} ₽ | ${item.vendor || 'Без поставщика'}
+          </div>
+          ${item.images && item.images.length > 0 ? `
+            <div class="item-photos">
+              ${item.images.map(img => `<img src="data:image/jpeg;base64,${img}" />`).join('')}
+            </div>
+          ` : ''}
+        </div>
+      `).join('');
+
+      const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Смета: ${project.name}</title><style>body { font-family: sans-serif; padding: 40px; color: #1e293b; max-width: 1000px; margin: 0 auto; }.header { border-bottom: 3px solid #10b981; padding-bottom: 20px; }.summary { display: flex; justify-content: space-around; background: #f8fafc; padding: 20px; border-radius: 16px; margin: 30px 0; }.item { border-bottom: 1px solid #f1f5f9; padding: 20px 0; }.item-photos img { max-width: 200px; border-radius: 8px; margin-right: 10px; }</style></head><body><div class="header"><h1>${project.name}</h1><p>${project.address}</p></div><div class="summary"><div><strong>МАТЕРИАЛЫ</strong><br>${totalM.toLocaleString()} ₽</div><div><strong>РАБОТЫ</strong><br>${totalL.toLocaleString()} ₽</div></div>${renderItems(entries)}</body></html>`;
+      const blob = new Blob([html], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Smeta_${project.name}.html`;
+      a.click();
       return;
     }
 
@@ -254,24 +218,9 @@ const App: React.FC = () => {
       return;
     }
 
-    const materials = entries.filter(e => e.type === EntryType.MATERIAL);
-    const labor = entries.filter(e => e.type === EntryType.LABOR);
-    const totalM = materials.reduce((sum, e) => sum + (e.total || 0), 0);
-    const totalL = labor.reduce((sum, e) => sum + (e.total || 0), 0);
-
-    let report = `ОТЧЕТ: ${project.name.toUpperCase()}\nАДРЕС: ${project.address}\n\n`;
-    if (materials.length > 0) {
-      report += `[МАТЕРИАЛЫ: ${totalM}₽]\n` + materials.map(m => `• ${m.name}: ${m.total}₽`).join('\n') + '\n\n';
-    }
-    if (labor.length > 0) {
-      report += `[РАБОТЫ: ${totalL}₽]\n` + labor.map(l => `• ${l.name}: ${l.total}₽`).join('\n') + '\n\n';
-    }
-    report += `ОБЩАЯ СУММА: ${totalM + totalL}₽\nAiСмета`;
-
+    const report = `ОТЧЕТ: ${project.name}\n${project.address}\n\nСумма: ${entries.reduce((s, e) => s + (e.total || 0), 0)}₽`;
     if (navigator.share) {
-      try {
-        await navigator.share({ title: project.name, text: report });
-      } catch (err) {}
+      await navigator.share({ title: project.name, text: report });
     } else {
       await navigator.clipboard.writeText(report);
       alert("Отчет скопирован");
@@ -282,31 +231,15 @@ const App: React.FC = () => {
     try {
       const text = await file.text();
       const data = JSON.parse(text);
-      if (!data.project || !data.entries) throw new Error("Invalid format");
-
       const newProjectId = generateId();
-      const newProject: Project = {
-        ...data.project,
-        id: newProjectId,
-        name: `${data.project.name} (Импорт)`,
-        createdAt: Date.now(),
-        archived: false
-      };
-
-      await saveProject(newProject);
+      await saveProject({ ...data.project, id: newProjectId, archived: false });
       for (const entry of data.entries) {
-        await saveEntry({
-          ...entry,
-          id: generateId(),
-          projectId: newProjectId
-        });
+        await saveEntry({ ...entry, id: generateId(), projectId: newProjectId });
       }
-
       await refreshProjects();
-      alert("Проект успешно импортирован");
+      alert("Импорт завершен");
     } catch (err) {
-      alert("Ошибка при импорте файла");
-      console.error(err);
+      alert("Ошибка импорта");
     }
   };
 

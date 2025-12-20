@@ -34,50 +34,52 @@ const RESPONSE_SCHEMA = {
 };
 
 export const processImage = async (base64Image: string) => {
+  if (!process.env.API_KEY) throw new Error("API Key is missing in environment");
+  
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
-    contents: [
-      {
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-pro-preview',
+      contents: {
         parts: [
           { inlineData: { mimeType: 'image/jpeg', data: base64Image } },
           { text: "Извлеки все строительные материалы и работы из этого изображения чека/документа. Верни массив JSON." }
         ]
+      },
+      config: {
+        systemInstruction: SYSTEM_INSTRUCTION,
+        responseMimeType: "application/json",
+        responseSchema: RESPONSE_SCHEMA,
       }
-    ],
-    config: {
-      systemInstruction: SYSTEM_INSTRUCTION,
-      responseMimeType: "application/json",
-      responseSchema: RESPONSE_SCHEMA,
-    }
-  });
+    });
 
-  return JSON.parse(response.text);
+    return JSON.parse(response.text || "[]");
+  } catch (err: any) {
+    console.error("Gemini Image Process Error:", err);
+    throw err;
+  }
 };
 
 export const processVoice = async (transcript: string) => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
-    contents: `Разбери эту голосовую заметку по стройке: "${transcript}". Верни массив JSON согласно схеме.`,
-    config: {
-      systemInstruction: SYSTEM_INSTRUCTION,
-      responseMimeType: "application/json",
-      responseSchema: RESPONSE_SCHEMA,
-    }
-  });
+  if (!process.env.API_KEY) throw new Error("API Key is missing in environment");
 
-  return JSON.parse(response.text);
-};
-
-export const getProjectSummary = async (entries: string) => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
-    contents: `На основе этих записей: ${entries}, предоставь краткий обзор общих затрат на материалы и работы.`,
-    config: {
-      systemInstruction: "Вы помощник прораба. Ваша цель — кратко и по делу анализировать расходы."
-    }
-  });
-  return response.text;
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: {
+        parts: [{ text: `Разбери эту голосовую заметку по стройке: "${transcript}". Верни массив JSON согласно схеме.` }]
+      },
+      config: {
+        systemInstruction: SYSTEM_INSTRUCTION,
+        responseMimeType: "application/json",
+        responseSchema: RESPONSE_SCHEMA,
+      }
+    });
+
+    return JSON.parse(response.text || "[]");
+  } catch (err: any) {
+    console.error("Gemini Voice Process Error:", err);
+    throw err;
+  }
 };
