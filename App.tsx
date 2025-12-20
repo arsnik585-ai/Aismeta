@@ -17,6 +17,65 @@ const App: React.FC = () => {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [isSyncing, setIsSyncing] = useState(false);
   const [viewingArchive, setViewingArchive] = useState(false);
+  const [apiKeyReady, setApiKeyReady] = useState(false);
+
+  // Безопасное получение ключа из окружения
+  const getEnvApiKey = () => {
+    try {
+      // Пытаемся достать из window.process или напрямую из process.env
+      return (window as any).process?.env?.API_KEY || (typeof process !== 'undefined' ? process.env.API_KEY : null);
+    } catch {
+      return null;
+    }
+  };
+
+  // Проверка наличия ключа при загрузке
+  useEffect(() => {
+    const checkKey = async () => {
+      // Если ключ уже есть в окружении (например, локально), считаем, что готовы
+      if (getEnvApiKey()) {
+        setApiKeyReady(true);
+        return;
+      }
+      
+      // Проверяем наличие методов AI Studio
+      const aistudio = (window as any).aistudio;
+      if (aistudio && typeof aistudio.hasSelectedApiKey === 'function') {
+        try {
+          const hasKey = await aistudio.hasSelectedApiKey();
+          if (hasKey) {
+            setApiKeyReady(true);
+          }
+        } catch (e) {
+          console.debug("Check key failed:", e);
+        }
+      }
+    };
+
+    checkKey();
+    // Повторяем проверку через секунду на случай, если скрипты окружения подгружаются позже
+    const t = setTimeout(checkKey, 1000);
+    return () => clearTimeout(t);
+  }, []);
+
+  const handleOpenKeySelector = async () => {
+    const aistudio = (window as any).aistudio;
+    if (aistudio && typeof aistudio.openSelectKey === 'function') {
+      try {
+        await aistudio.openSelectKey();
+        // Согласно правилам, предполагаем успех сразу после вызова и продолжаем в приложение
+        setApiKeyReady(true);
+      } catch (e) {
+        console.error("Open key selector failed:", e);
+        // Если вызов не удался, но мы видим ключ в окружении — пускаем
+        if (getEnvApiKey()) setApiKeyReady(true);
+      }
+    } else {
+      // Если мы не в среде AI Studio, просто пропускаем экран активации
+      console.warn("window.aistudio.openSelectKey не обнаружен. Пропускаем...");
+      setApiKeyReady(true);
+    }
+  };
 
   const refreshProjects = useCallback(async () => {
     try {
@@ -55,7 +114,7 @@ const App: React.FC = () => {
   }, [refreshProjects]);
 
   const handleSync = useCallback(async () => {
-    if (!isOnline || isSyncing) return;
+    if (!isOnline || isSyncing || !apiKeyReady) return;
     const queue = await getSyncQueue();
     if (queue.length === 0) return;
 
@@ -69,10 +128,8 @@ const App: React.FC = () => {
           items = await processVoice(item.payload);
         }
 
-        // Удаляем временную заглушку
         await deleteEntry(item.entryId);
         
-        // Добавляем реально распознанные элементы
         for (const entryData of items) {
           const newEntry: Entry = {
             id: generateId(),
@@ -89,7 +146,10 @@ const App: React.FC = () => {
         await removeFromSyncQueue(item.id);
       } catch (e: any) {
         console.error("Sync Error:", item.id, e);
-        // Если ошибка — обновляем запись в БД, чтобы пользователь видел статус
+        if (e.message?.includes("Requested entity was not found")) {
+          setApiKeyReady(false);
+        }
+        
         const db = await initDB();
         const tx = db.transaction('entries', 'readwrite');
         const store = tx.objectStore('entries');
@@ -102,19 +162,18 @@ const App: React.FC = () => {
             store.put(entry);
           }
         };
-        // Удаляем из очереди, чтобы не пытаться бесконечно
         await removeFromSyncQueue(item.id);
       }
     }
     setIsSyncing(false);
     await refreshProjects();
-  }, [isOnline, isSyncing, currentProject, refreshProjects]);
+  }, [isOnline, isSyncing, currentProject, refreshProjects, apiKeyReady]);
 
   useEffect(() => {
-    if (isOnline) {
+    if (isOnline && apiKeyReady) {
       handleSync();
     }
-  }, [isOnline, handleSync]);
+  }, [isOnline, handleSync, apiKeyReady]);
 
   const createNewProject = async (name: string, address: string) => {
     const newProject: Project = {
@@ -177,37 +236,87 @@ const App: React.FC = () => {
     if (format === 'html') {
       const materials = entries.filter(e => e.type === EntryType.MATERIAL);
       const labor = entries.filter(e => e.type === EntryType.LABOR);
-      const totalM = materials.reduce((sum, e) => sum + (e.total || 0), 0);
-      const totalL = labor.reduce((sum, e) => sum + (e.total || 0), 0);
 
       const renderItems = (items: Entry[]) => items.map(item => `
-        <div class="item">
-          <div class="item-header">
-            <div class="item-name">${item.name || 'Без названия'}</div>
-            <div class="item-price">${(item.total || 0).toLocaleString()} ₽</div>
-          </div>
-          <div class="item-details">
-            ${item.quantity || 0} ${item.unit || ''} × ${item.price || 0} ₽ | ${item.vendor || 'Без поставщика'}
+        <div style="border-bottom: 1px solid #eee; padding: 15px 0;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+              <div style="font-weight: bold; font-size: 1.1em; color: #1e293b;">${item.name || 'Без названия'}</div>
+              <div style="font-size: 0.85em; color: #64748b; margin-top: 4px;">
+                ${item.quantity || 0} ${item.unit || ''} × ${item.price || 0} ₽ | ${item.vendor || 'Без поставщика'}
+              </div>
+            </div>
+            <div style="font-weight: bold; font-size: 1.1em; color: #059669;">${(item.total || 0).toLocaleString()} ₽</div>
           </div>
           ${item.images && item.images.length > 0 ? `
-            <div class="item-photos">
-              ${item.images.map(img => `<img src="data:image/jpeg;base64,${img}" />`).join('')}
+            <div style="margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap;">
+              ${item.images.map(img => `<img src="data:image/jpeg;base64,${img}" style="max-width: 200px; border-radius: 8px; border: 1px solid #e2e8f0;" />`).join('')}
             </div>
           ` : ''}
         </div>
       `).join('');
 
-      const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Смета: ${project.name}</title><style>body { font-family: sans-serif; padding: 40px; color: #1e293b; max-width: 1000px; margin: 0 auto; }.header { border-bottom: 3px solid #10b981; padding-bottom: 20px; }.summary { display: flex; justify-content: space-around; background: #f8fafc; padding: 20px; border-radius: 16px; margin: 30px 0; }.item { border-bottom: 1px solid #f1f5f9; padding: 20px 0; }.item-photos img { max-width: 200px; border-radius: 8px; margin-right: 10px; }</style></head><body><div class="header"><h1>${project.name}</h1><p>${project.address}</p></div><div class="summary"><div><strong>МАТЕРИАЛЫ</strong><br>${totalM.toLocaleString()} ₽</div><div><strong>РАБОТЫ</strong><br>${totalL.toLocaleString()} ₽</div></div>${renderItems(entries)}</body></html>`;
-      const blob = new Blob([html], { type: 'text/html' });
+      const htmlContent = `<!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>${project.name} - Отчет</title>
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 40px; color: #334155; line-height: 1.5; max-width: 800px; margin: 0 auto; background: #f8fafc; }
+            .header { background: #fff; padding: 30px; border-radius: 20px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); margin-bottom: 30px; }
+            h1 { color: #059669; margin: 0; font-size: 2em; }
+            .address { color: #64748b; font-size: 0.9em; margin-top: 5px; }
+            .section { background: #fff; padding: 30px; border-radius: 20px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); margin-bottom: 20px; }
+            .section-title { font-size: 1.2em; font-weight: 800; color: #059669; border-bottom: 2px solid #ecfdf5; padding-bottom: 10px; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 0.05em; }
+            @media print { body { background: #fff; padding: 0; } .header, .section { box-shadow: none; border: 1px solid #eee; } }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>${project.name}</h1>
+            <p class="address">${project.address || 'Адрес не указан'}</p>
+          </div>
+          <div class="section">
+            <div class="section-title">Материалы</div>
+            ${renderItems(materials)}
+          </div>
+          <div class="section">
+            <div class="section-title">Работы</div>
+            ${renderItems(labor)}
+          </div>
+        </body>
+      </html>`;
+
+      const blob = new Blob([htmlContent], { type: 'text/html' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `Smeta_${project.name}.html`;
+      a.download = `${project.name}_отчет.html`;
       a.click();
-      return;
-    }
+      URL.revokeObjectURL(url);
+    } else if (format === 'text') {
+      const materials = entries.filter(e => e.type === EntryType.MATERIAL);
+      const labor = entries.filter(e => e.type === EntryType.LABOR);
+      
+      let text = `ПРОЕКТ: ${project.name}\nАДРЕС: ${project.address || 'не указан'}\n\n`;
+      text += `МАТЕРИАЛЫ:\n`;
+      materials.forEach(e => {
+        text += `- ${e.name}: ${e.quantity || 0} ${e.unit || ''} x ${e.price || 0} = ${e.total || 0} руб.\n`;
+      });
+      text += `\nРАБОТЫ:\n`;
+      labor.forEach(e => {
+        text += `- ${e.name}: ${e.quantity || 0} ${e.unit || ''} x ${e.price || 0} = ${e.total || 0} руб.\n`;
+      });
 
-    if (format === 'json') {
+      const blob = new Blob([text], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${project.name}_смета.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } else if (format === 'json') {
       const data = JSON.stringify({ project, entries }, null, 2);
       const blob = new Blob([data], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
@@ -215,59 +324,86 @@ const App: React.FC = () => {
       a.href = url;
       a.download = `${project.name}.ais`;
       a.click();
-      return;
-    }
-
-    const report = `ОТЧЕТ: ${project.name}\n${project.address}\n\nСумма: ${entries.reduce((s, e) => s + (e.total || 0), 0)}₽`;
-    if (navigator.share) {
-      await navigator.share({ title: project.name, text: report });
-    } else {
-      await navigator.clipboard.writeText(report);
-      alert("Отчет скопирован");
+      URL.revokeObjectURL(url);
     }
   };
 
-  const handleImportProject = async (file: File) => {
+  const handleImport = async (file: File) => {
     try {
       const text = await file.text();
       const data = JSON.parse(text);
-      const newProjectId = generateId();
-      await saveProject({ ...data.project, id: newProjectId, archived: false });
-      for (const entry of data.entries) {
-        await saveEntry({ ...entry, id: generateId(), projectId: newProjectId });
+      if (data.project && Array.isArray(data.entries)) {
+        const newProject = { ...data.project, id: generateId(), createdAt: Date.now(), archived: false };
+        await saveProject(newProject);
+        for (const entry of data.entries) {
+          await saveEntry({ ...entry, id: generateId(), projectId: newProject.id, archived: false });
+        }
+        await refreshProjects();
       }
-      await refreshProjects();
-      alert("Импорт завершен");
-    } catch (err) {
-      alert("Ошибка импорта");
+    } catch (e) {
+      console.error("Import failed:", e);
+      alert("Ошибка импорта файла: некорректный формат .ais");
     }
   };
 
+  // Экран активации ключа
+  if (!apiKeyReady) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-8 text-center">
+        <div className="w-20 h-20 bg-emerald-600/20 rounded-3xl flex items-center justify-center mb-8 border border-emerald-500/30 shadow-[0_0_50px_rgba(16,185,129,0.1)]">
+          <svg className="w-10 h-10 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+        </div>
+        <h1 className="text-3xl font-bold text-white mb-4 coding-font uppercase tracking-tighter">AI СМЕТА</h1>
+        <p className="text-slate-400 max-w-xs mb-10 leading-relaxed text-sm">
+          Для работы искусственного интеллекта (распознавание чеков и голоса) необходимо выбрать оплаченный API ключ в AI Studio.
+        </p>
+        <button 
+          onClick={handleOpenKeySelector}
+          className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-5 px-10 rounded-2xl transition-all shadow-xl shadow-emerald-900/20 uppercase text-xs tracking-[0.2em] active:scale-95 border border-emerald-400/50"
+        >
+          ВЫБРАТЬ API КЛЮЧ
+        </button>
+        <a 
+          href="https://ai.google.dev/gemini-api/docs/billing" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="mt-10 text-[10px] text-slate-500 uppercase tracking-widest hover:text-emerald-500 transition-colors"
+        >
+          Инструкция по биллингу →
+        </a>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen flex flex-col max-w-screen-2xl mx-auto bg-slate-950 shadow-2xl overflow-hidden relative border-x border-slate-900">
+    <div className="min-h-screen bg-slate-950 text-slate-200 flex flex-col max-w-5xl mx-auto shadow-[0_0_100px_rgba(0,0,0,0.5)] border-x border-slate-900">
+      <SyncStatus isOnline={isOnline} isSyncing={isSyncing} />
+      
       <Header 
         isDetail={!!currentProject} 
-        onBack={() => { setCurrentProject(null); setInitialAction(null); }} 
-        title={currentProject?.name || 'Aiсмета'}
+        onBack={() => { setCurrentProject(null); setInitialAction(null); }}
+        title={currentProject ? currentProject.name : 'AI СМЕТА'}
         viewingArchive={viewingArchive}
         onToggleArchive={() => setViewingArchive(!viewingArchive)}
-        onImport={handleImportProject}
+        onImport={handleImport}
       />
-      
-      <main className="flex-1 overflow-y-auto pb-20 p-4 md:p-6 lg:p-8">
+
+      <main className="flex-1 p-4 md:p-6 overflow-y-auto">
         {currentProject ? (
           <ProjectDetail 
             project={currentProject} 
             isOnline={isOnline} 
-            onSyncRequested={handleSync} 
+            onSyncRequested={handleSync}
             initialAction={initialAction}
           />
         ) : (
           <Dashboard 
-            projects={projects} 
+            projects={projects}
             materialTotals={materialTotals}
             laborTotals={laborTotals}
-            onProjectSelect={setCurrentProject} 
+            onProjectSelect={setCurrentProject}
             onCreateProject={createNewProject}
             onArchive={handleProjectArchive}
             onPermanentDelete={handleProjectPermanentDelete}
@@ -279,8 +415,6 @@ const App: React.FC = () => {
           />
         )}
       </main>
-
-      <SyncStatus isOnline={isOnline} isSyncing={isSyncing} />
     </div>
   );
 };

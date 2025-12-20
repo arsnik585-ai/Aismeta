@@ -34,8 +34,7 @@ const RESPONSE_SCHEMA = {
 };
 
 export const processImage = async (base64Image: string) => {
-  if (!process.env.API_KEY) throw new Error("API Key is missing in environment");
-  
+  // Use process.env.API_KEY directly as required by guidelines.
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   try {
     const response = await ai.models.generateContent({
@@ -61,8 +60,7 @@ export const processImage = async (base64Image: string) => {
 };
 
 export const processVoice = async (transcript: string) => {
-  if (!process.env.API_KEY) throw new Error("API Key is missing in environment");
-
+  // Use process.env.API_KEY directly as required by guidelines.
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   try {
     const response = await ai.models.generateContent({
