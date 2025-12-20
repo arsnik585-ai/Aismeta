@@ -17,65 +17,6 @@ const App: React.FC = () => {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [isSyncing, setIsSyncing] = useState(false);
   const [viewingArchive, setViewingArchive] = useState(false);
-  const [apiKeyReady, setApiKeyReady] = useState(false);
-
-  // Безопасное получение ключа из окружения
-  const getEnvApiKey = () => {
-    try {
-      // Пытаемся достать из window.process или напрямую из process.env
-      return (window as any).process?.env?.API_KEY || (typeof process !== 'undefined' ? process.env.API_KEY : null);
-    } catch {
-      return null;
-    }
-  };
-
-  // Проверка наличия ключа при загрузке
-  useEffect(() => {
-    const checkKey = async () => {
-      // Если ключ уже есть в окружении (например, локально), считаем, что готовы
-      if (getEnvApiKey()) {
-        setApiKeyReady(true);
-        return;
-      }
-      
-      // Проверяем наличие методов AI Studio
-      const aistudio = (window as any).aistudio;
-      if (aistudio && typeof aistudio.hasSelectedApiKey === 'function') {
-        try {
-          const hasKey = await aistudio.hasSelectedApiKey();
-          if (hasKey) {
-            setApiKeyReady(true);
-          }
-        } catch (e) {
-          console.debug("Check key failed:", e);
-        }
-      }
-    };
-
-    checkKey();
-    // Повторяем проверку через секунду на случай, если скрипты окружения подгружаются позже
-    const t = setTimeout(checkKey, 1000);
-    return () => clearTimeout(t);
-  }, []);
-
-  const handleOpenKeySelector = async () => {
-    const aistudio = (window as any).aistudio;
-    if (aistudio && typeof aistudio.openSelectKey === 'function') {
-      try {
-        await aistudio.openSelectKey();
-        // Согласно правилам, предполагаем успех сразу после вызова и продолжаем в приложение
-        setApiKeyReady(true);
-      } catch (e) {
-        console.error("Open key selector failed:", e);
-        // Если вызов не удался, но мы видим ключ в окружении — пускаем
-        if (getEnvApiKey()) setApiKeyReady(true);
-      }
-    } else {
-      // Если мы не в среде AI Studio, просто пропускаем экран активации
-      console.warn("window.aistudio.openSelectKey не обнаружен. Пропускаем...");
-      setApiKeyReady(true);
-    }
-  };
 
   const refreshProjects = useCallback(async () => {
     try {
@@ -114,7 +55,7 @@ const App: React.FC = () => {
   }, [refreshProjects]);
 
   const handleSync = useCallback(async () => {
-    if (!isOnline || isSyncing || !apiKeyReady) return;
+    if (!isOnline || isSyncing) return;
     const queue = await getSyncQueue();
     if (queue.length === 0) return;
 
@@ -146,9 +87,6 @@ const App: React.FC = () => {
         await removeFromSyncQueue(item.id);
       } catch (e: any) {
         console.error("Sync Error:", item.id, e);
-        if (e.message?.includes("Requested entity was not found")) {
-          setApiKeyReady(false);
-        }
         
         const db = await initDB();
         const tx = db.transaction('entries', 'readwrite');
@@ -167,13 +105,13 @@ const App: React.FC = () => {
     }
     setIsSyncing(false);
     await refreshProjects();
-  }, [isOnline, isSyncing, currentProject, refreshProjects, apiKeyReady]);
+  }, [isOnline, isSyncing, currentProject, refreshProjects]);
 
   useEffect(() => {
-    if (isOnline && apiKeyReady) {
+    if (isOnline) {
       handleSync();
     }
-  }, [isOnline, handleSync, apiKeyReady]);
+  }, [isOnline, handleSync]);
 
   const createNewProject = async (name: string, address: string) => {
     const newProject: Project = {
@@ -345,37 +283,6 @@ const App: React.FC = () => {
       alert("Ошибка импорта файла: некорректный формат .ais");
     }
   };
-
-  // Экран активации ключа
-  if (!apiKeyReady) {
-    return (
-      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-8 text-center">
-        <div className="w-20 h-20 bg-emerald-600/20 rounded-3xl flex items-center justify-center mb-8 border border-emerald-500/30 shadow-[0_0_50px_rgba(16,185,129,0.1)]">
-          <svg className="w-10 h-10 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-          </svg>
-        </div>
-        <h1 className="text-3xl font-bold text-white mb-4 coding-font uppercase tracking-tighter">AI СМЕТА</h1>
-        <p className="text-slate-400 max-w-xs mb-10 leading-relaxed text-sm">
-          Для работы искусственного интеллекта (распознавание чеков и голоса) необходимо выбрать оплаченный API ключ в AI Studio.
-        </p>
-        <button 
-          onClick={handleOpenKeySelector}
-          className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-5 px-10 rounded-2xl transition-all shadow-xl shadow-emerald-900/20 uppercase text-xs tracking-[0.2em] active:scale-95 border border-emerald-400/50"
-        >
-          ВЫБРАТЬ API КЛЮЧ
-        </button>
-        <a 
-          href="https://ai.google.dev/gemini-api/docs/billing" 
-          target="_blank" 
-          rel="noopener noreferrer"
-          className="mt-10 text-[10px] text-slate-500 uppercase tracking-widest hover:text-emerald-500 transition-colors"
-        >
-          Инструкция по биллингу →
-        </a>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200 flex flex-col max-w-5xl mx-auto shadow-[0_0_100px_rgba(0,0,0,0.5)] border-x border-slate-900">

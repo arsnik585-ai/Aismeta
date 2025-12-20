@@ -91,6 +91,23 @@ const EntryCard: React.FC<{
                         <button onClick={(evt) => { evt.stopPropagation(); setShowMenu(!showMenu); }} className="p-1 text-slate-400 hover:text-white transition-colors active:scale-90">
                             <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" /></svg>
                         </button>
+                        {showMenu && (
+                          <div className="absolute right-0 top-10 w-44 bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl z-50 py-2 animate-in fade-in zoom-in-95 duration-150 origin-top-right">
+                            <button onClick={(evt) => { evt.stopPropagation(); onTypeToggle(e.id); setShowMenu(false); }} className="w-full text-left px-4 py-3 text-xs font-bold text-slate-300 hover:bg-slate-700 flex items-center gap-3">
+                              <svg className="w-4 h-4 text-cyan-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
+                              ИЗМЕНИТЬ ТИП
+                            </button>
+                            <button onClick={(evt) => { evt.stopPropagation(); onArchiveToggle(e.id); setShowMenu(false); }} className="w-full text-left px-4 py-3 text-xs font-bold text-slate-300 hover:bg-slate-700 flex items-center gap-3">
+                              <svg className="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
+                              В АРХИВ
+                            </button>
+                            <div className="h-px bg-slate-700 my-1 mx-2"></div>
+                            <button onClick={(evt) => { evt.stopPropagation(); onPermanentDelete(e.id); setShowMenu(false); }} className="w-full text-left px-4 py-3 text-xs font-bold text-red-400 hover:bg-red-950/30 flex items-center gap-3">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" strokeWidth={2}/></svg>
+                              УДАЛИТЬ
+                            </button>
+                          </div>
+                        )}
                     </div>
                 </div>
                 
