@@ -2,14 +2,14 @@ import { GoogleGenAI, Type } from "@google/genai";
 
 /**
  * BuildFlow AI Service (Client Side)
- * Using the Gemini API directly from the browser as per system guidelines.
  */
 
 const getAI = () => {
-  if (!process.env.API_KEY) {
-    throw new Error("API_KEY is not defined in the environment.");
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) {
+    throw new Error("API_KEY_MISSING: Ключ API не найден в окружении. Пожалуйста, убедитесь, что он настроен.");
   }
-  return new GoogleGenAI({ apiKey: process.env.API_KEY });
+  return new GoogleGenAI({ apiKey });
 };
 
 const SYSTEM_INSTRUCTION = `Вы — ведущий инженер BuildFlow AI. 
@@ -38,9 +38,9 @@ const ITEM_SCHEMA = {
 
 export const processImage = async (base64Image: string) => {
   console.log("[AI_SERVICE] Processing image locally...");
-  const ai = getAI();
   
   try {
+    const ai = getAI();
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: [{ 
@@ -68,9 +68,9 @@ export const processImage = async (base64Image: string) => {
 
 export const processVoice = async (transcript: string) => {
   console.log("[AI_SERVICE] Processing voice transcript locally...");
-  const ai = getAI();
   
   try {
+    const ai = getAI();
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: [{ 
