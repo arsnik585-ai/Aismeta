@@ -1,51 +1,46 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
-import { EntryType } from "./types";
 
-// Используем ключ, предоставленный пользователем напрямую
-const API_KEY = "AIzaSyAJxr6Wob4etFjLsjTzSTXn9v52mgqa9iQ";
+// ВАЖНО: Строка process.env.API_KEY будет заменена на реальный ключ во время сборки в Netlify
+// Если после деплоя вы видите ошибку 'API_KEY is not defined', значит в Netlify не была запущена сборка (Clear cache and deploy).
+const getApiKey = () => {
+  return process.env.API_KEY;
+};
 
-const SYSTEM_INSTRUCTION = `Вы — эксперт по составлению строительных смет. 
-Ваша задача: анализировать входящий текст (чеки или голосовые заметки) и извлекать из них список позиций.
-Контекст: исключительно строительство, ремонт, отделка и инженерные коммуникации.
-
-Правила:
-1. Классифицируй как MATERIAL: любые товары, сырье, инструменты, крепеж, расходники.
-2. Классифицируй как LABOR: любые услуги, работы, аренду спецтехники, доставку или разгрузку.
-3. Если количество или цена не указаны явно, старайся вычислить их логически или оставь null.
-4. Исправляй опечатки, характерные для строительного сленга (например, "профиль кнауф", "ротбанд", "шпатлевка").
-5. Если в одной строке несколько разных товаров, разделяй их на разные объекты.`;
+const SYSTEM_INSTRUCTION = `Вы — ИИ-ассистент BuildFlow. Эксперт в строительных сметах.
+Ваша задача: извлекать данные о материалах и работах.
+Типы: MATERIAL или LABOR.
+Обязательно вычисляй total.`;
 
 const ITEM_SCHEMA = {
   type: Type.OBJECT,
   properties: {
-    name: { type: Type.STRING, description: 'Наименование товара или описание работы' },
-    type: { type: Type.STRING, enum: [EntryType.MATERIAL, EntryType.LABOR], description: 'Классификация' },
+    name: { type: Type.STRING },
+    type: { type: Type.STRING, enum: ['MATERIAL', 'LABOR'] },
     quantity: { type: Type.NUMBER, nullable: true },
     unit: { type: Type.STRING, nullable: true },
     price: { type: Type.NUMBER, nullable: true },
     total: { type: Type.NUMBER, nullable: true },
-    vendor: { type: Type.STRING, nullable: true, description: 'Название магазина, поставщика или исполнителя' },
+    vendor: { type: Type.STRING, nullable: true },
   },
   required: ['name', 'type'],
 };
 
 const RESPONSE_SCHEMA = {
   type: Type.ARRAY,
-  items: ITEM_SCHEMA,
-  description: 'Список всех найденных строительных позиций'
+  items: ITEM_SCHEMA
 };
 
 export const processImage = async (base64Image: string) => {
-  // Используем Gemini 3 Flash Preview - самая стабильная модель для бесплатных ключей
-  const ai = new GoogleGenAI({ apiKey: API_KEY });
+  const apiKey = getApiKey();
+  const ai = new GoogleGenAI({ apiKey });
+  
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: {
         parts: [
           { inlineData: { mimeType: 'image/jpeg', data: base64Image } },
-          { text: "Извлеки все строительные материалы и работы из этого изображения чека/документа. Верни массив JSON." }
+          { text: "Извлеки строительные позиции из чека в JSON." }
         ]
       },
       config: {
@@ -57,18 +52,20 @@ export const processImage = async (base64Image: string) => {
 
     return JSON.parse(response.text || "[]");
   } catch (err: any) {
-    console.error("Gemini Image Process Error:", err);
-    throw err;
+    console.error("AI Error:", err);
+    throw new Error("Ошибка ИИ. Проверьте лимиты ключа или деплой.");
   }
 };
 
 export const processVoice = async (transcript: string) => {
-  const ai = new GoogleGenAI({ apiKey: API_KEY });
+  const apiKey = getApiKey();
+  const ai = new GoogleGenAI({ apiKey });
+  
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: {
-        parts: [{ text: `Разбери эту голосовую заметку по стройке: "${transcript}". Верни массив JSON согласно схеме.` }]
+        parts: [{ text: `Разбери заметку: "${transcript}"` }]
       },
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
@@ -79,7 +76,7 @@ export const processVoice = async (transcript: string) => {
 
     return JSON.parse(response.text || "[]");
   } catch (err: any) {
-    console.error("Gemini Voice Process Error:", err);
-    throw err;
+    console.error("AI Error:", err);
+    throw new Error("Ошибка разбора голоса.");
   }
 };

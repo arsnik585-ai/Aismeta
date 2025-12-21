@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Project, Entry, EntryType } from '../types';
 import { getEntriesByProject, saveEntry, addToSyncQueue, deleteEntry, generateId } from '../db';
@@ -50,8 +49,9 @@ const EntryCard: React.FC<{
         else setTranslateX(0);
     };
 
-    const handleDelete = (evt: React.MouseEvent) => {
+    const handleDelete = (evt: React.MouseEvent | React.PointerEvent) => {
         evt.stopPropagation();
+        evt.preventDefault();
         onPermanentDelete(e.id);
         setShowMenu(false);
         setTranslateX(0);
@@ -66,7 +66,7 @@ const EntryCard: React.FC<{
             {/* Свайп-меню (задний план) */}
             <div className="absolute inset-0 flex items-center justify-end px-4 gap-2">
                 <button 
-                  onClick={handleDelete}
+                  onMouseDown={handleDelete}
                   className="bg-red-600 text-white h-[80%] px-6 rounded-xl text-[9px] font-bold uppercase shadow-lg flex flex-col items-center justify-center gap-1 active:bg-red-500"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" strokeWidth={2}/></svg>
@@ -119,7 +119,7 @@ const EntryCard: React.FC<{
                         {showMenu && (
                           <div className="absolute right-0 top-10 w-48 bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl py-2 animate-in fade-in zoom-in-95 duration-150 origin-top-right">
                             <button 
-                                onClick={(evt) => { stopBubbling(evt); onTypeToggle(e.id); setShowMenu(false); }} 
+                                onMouseDown={(evt) => { stopBubbling(evt); onTypeToggle(e.id); setShowMenu(false); }} 
                                 className="w-full text-left px-4 py-3 text-xs font-bold text-slate-300 hover:bg-slate-700 flex items-center gap-3"
                             >
                               <svg className="w-4 h-4 text-cyan-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
@@ -127,7 +127,7 @@ const EntryCard: React.FC<{
                             </button>
                             <div className="h-px bg-slate-700 my-1 mx-2"></div>
                             <button 
-                              onClick={handleDelete}
+                              onMouseDown={handleDelete}
                               className="w-full text-left px-4 py-3 text-xs font-bold text-red-400 hover:bg-red-950/30 flex items-center gap-3"
                             >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" strokeWidth={2}/></svg>
