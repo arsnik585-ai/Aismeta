@@ -17,34 +17,6 @@ const App: React.FC = () => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [viewingArchive, setViewingArchive] = useState(false);
   const [activeTab, setActiveTab] = useState<EntryType>(EntryType.MATERIAL);
-  const [needsApiKey, setNeedsApiKey] = useState(false);
-
-  // API Key handling per environment instructions
-  useEffect(() => {
-    const checkKey = async () => {
-      const aistudio = (window as any).aistudio;
-      if (aistudio) {
-        const hasKey = await aistudio.hasSelectedApiKey();
-        // If the playground provides no key and hasn't had one selected, show modal
-        if (!hasKey && !process.env.API_KEY) {
-          setNeedsApiKey(true);
-        }
-      } else if (!process.env.API_KEY) {
-        // Fallback for standalone browser environments without injected keys
-        setNeedsApiKey(true);
-      }
-    };
-    checkKey();
-  }, []);
-
-  const handleSelectKey = async () => {
-    const aistudio = (window as any).aistudio;
-    if (aistudio) {
-      await aistudio.openSelectKey();
-      // Proceed assuming success to mitigate race conditions
-      setNeedsApiKey(false);
-    }
-  };
 
   const refreshProjects = useCallback(async () => {
     try {
@@ -83,7 +55,7 @@ const App: React.FC = () => {
   }, [refreshProjects]);
 
   const handleSync = useCallback(async () => {
-    if (!isOnline || isSyncing || needsApiKey) return;
+    if (!isOnline || isSyncing) return;
     const queue = await getSyncQueue();
     if (queue.length === 0) return;
 
@@ -104,15 +76,7 @@ const App: React.FC = () => {
           if (resultItems.length === 0) errorToRecord = "ИИ не нашел позиций.";
         } catch (e: any) {
           console.error("AI sync error:", e);
-          const msg = e.message || "Ошибка ИИ";
-          errorToRecord = msg;
-          
-          // Guideline: handle "Requested entity was not found." by re-prompting key selection
-          if (msg.includes("Requested entity was not found")) {
-            setNeedsApiKey(true);
-            setIsSyncing(false);
-            return; // Stop queue processing
-          }
+          errorToRecord = e.message || "Ошибка ИИ";
         }
 
         if (errorToRecord) {
@@ -161,13 +125,13 @@ const App: React.FC = () => {
       setIsSyncing(false);
       await refreshProjects();
     }
-  }, [isOnline, isSyncing, currentProject, refreshProjects, needsApiKey]);
+  }, [isOnline, isSyncing, currentProject, refreshProjects]);
 
   useEffect(() => {
-    if (isOnline && !needsApiKey) {
+    if (isOnline) {
       handleSync();
     }
-  }, [isOnline, handleSync, needsApiKey]);
+  }, [isOnline, handleSync]);
 
   const createNewProject = async (name: string, address: string) => {
     const newProject: Project = {
@@ -323,31 +287,6 @@ const App: React.FC = () => {
     <div className="min-h-screen bg-slate-950 text-slate-200 flex flex-col max-w-5xl mx-auto shadow-[0_0_100px_rgba(0,0,0,0.5)] border-x border-slate-900">
       <SyncStatus isOnline={isOnline} isSyncing={isSyncing} />
       
-      {needsApiKey && (
-        <div className="fixed inset-0 bg-slate-950/90 z-[100] flex items-center justify-center p-6 backdrop-blur-xl">
-          <div className="bg-slate-900 border border-emerald-500/30 p-8 rounded-[2.5rem] max-w-sm w-full text-center space-y-6 shadow-2xl">
-            <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto border border-emerald-500/20">
-              <svg className="w-10 h-10 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-              </svg>
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-white mb-2 coding-font tracking-tighter uppercase">API KEY REQUIRED</h2>
-              <p className="text-sm text-slate-400 leading-relaxed">
-                Для работы ИИ необходимо выбрать API ключ. Пожалуйста, используйте платный проект GCP для доступа к Gemini.
-                <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" className="text-emerald-500 hover:underline block mt-1">Подробнее о биллинге</a>
-              </p>
-            </div>
-            <button 
-              onClick={handleSelectKey}
-              className="w-full bg-emerald-600 hover:bg-emerald-500 py-4 rounded-2xl font-bold text-white uppercase text-xs tracking-[0.2em] shadow-lg shadow-emerald-950/20 transition-all active:scale-95"
-            >
-              ВЫБРАТЬ API КЛЮЧ
-            </button>
-          </div>
-        </div>
-      )}
-
       <Header 
         isDetail={!!currentProject} 
         onBack={() => { 
