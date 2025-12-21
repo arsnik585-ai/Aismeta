@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Project } from '../types';
-import { saveProject } from '../db';
+import { Project, Income } from '../types';
+import { saveProject, generateId } from '../db';
 
 interface DashboardProps {
   projects: Project[];
@@ -32,8 +32,9 @@ const ProjectCard: React.FC<{
   onDuplicate: (p: Project) => void;
   onQuickAction: (p: Project, action: string) => void;
   onMove: (index: number, direction: 'up' | 'down') => void;
+  onBudgetClick: (p: Project) => void;
   isArchivedView: boolean;
-}> = ({ p, index, totalCount, mTotal, lTotal, onSelect, onArchiveToggle, onDelete, onRenameStart, onShareClick, onDuplicate, onQuickAction, onMove, isArchivedView }) => {
+}> = ({ p, index, totalCount, mTotal, lTotal, onSelect, onArchiveToggle, onDelete, onRenameStart, onShareClick, onDuplicate, onQuickAction, onMove, onBudgetClick, isArchivedView }) => {
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -51,6 +52,9 @@ const ProjectCard: React.FC<{
     e.stopPropagation();
     setShowMenu(!showMenu);
   };
+
+  const totalIncome = (p.incomes || []).reduce((sum, inc) => sum + inc.amount, 0);
+  const remainingBudget = totalIncome - (mTotal + lTotal);
 
   return (
     <div className={`relative rounded-xl bg-slate-950 transition-all duration-200 ${showMenu ? 'z-50' : 'z-10'}`}>
@@ -135,7 +139,9 @@ const ProjectCard: React.FC<{
                       }}
                       className="w-full text-left px-2.5 py-1.5 text-[9px] font-bold text-red-400 hover:bg-red-950/30 flex items-center gap-2 uppercase tracking-widest"
                     >
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
                       УДАЛИТЬ
                     </button>
                   </div>
@@ -153,35 +159,37 @@ const ProjectCard: React.FC<{
           </div>
         </div>
 
-        <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-800">
+        <div className="flex items-end justify-between mt-2 pt-2 border-t border-slate-800">
            <div className="text-left flex flex-col gap-0.5">
               <div className="leading-none">
-                <span className="inline-block text-[6px] text-slate-300 font-mono tracking-tighter uppercase mr-1 font-bold">МАТ:</span>
-                <span className="text-[14px] font-bold text-emerald-500 tabular-nums">
-                  {mTotal.toLocaleString()} 
-                  <span className="text-[8px] font-normal ml-0.5 opacity-40">₽</span>
+                <span className="inline-block text-[6px] text-slate-400 font-mono tracking-tighter uppercase mr-1 font-bold">МАТ:</span>
+                <span className="text-[12px] font-bold text-emerald-500/80 tabular-nums">
+                  {mTotal.toLocaleString()} <span className="text-[8px] opacity-40 font-normal">₽</span>
                 </span>
               </div>
               <div className="leading-none">
-                <span className="inline-block text-[6px] text-slate-300 font-mono tracking-tighter uppercase mr-1 font-bold">РАБ:</span>
-                <span className="text-[14px] font-bold text-cyan-500 tabular-nums">
-                  {lTotal.toLocaleString()} 
-                  <span className="text-[8px] font-normal ml-0.5 opacity-40">₽</span>
+                <span className="inline-block text-[6px] text-slate-400 font-mono tracking-tighter uppercase mr-1 font-bold">РАБ:</span>
+                <span className="text-[12px] font-bold text-cyan-500/80 tabular-nums">
+                  {lTotal.toLocaleString()} <span className="text-[8px] opacity-40 font-normal">₽</span>
                 </span>
               </div>
            </div>
            
            {!isArchivedView && (
-             <div className="flex gap-1" onClick={e => e.stopPropagation()}>
-                <button onClick={() => onQuickAction(p, 'material')} className="p-1.5 bg-slate-950 rounded text-emerald-500 border border-slate-800 active:bg-slate-800 transition-all shadow-sm">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                  </svg>
-                </button>
-                <button onClick={() => onQuickAction(p, 'labor')} className="p-1.5 bg-slate-950 rounded text-cyan-500 border border-slate-800 active:bg-slate-800 transition-all shadow-sm">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z" />
-                  </svg>
+             <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                <div className="text-right flex flex-col items-end">
+                    <span className={`text-[6px] font-mono font-bold uppercase tracking-widest ${remainingBudget < 0 ? 'text-red-400' : 'text-slate-400'}`}>ОСТАТОК:</span>
+                    <div className={`text-[14px] font-bold tabular-nums leading-none mt-0.5 ${remainingBudget < 0 ? 'text-red-500' : 'text-white'}`}>
+                        {remainingBudget.toLocaleString()} <span className="text-[8px] font-normal opacity-40">₽</span>
+                    </div>
+                </div>
+                <button 
+                    onClick={() => onBudgetClick(p)} 
+                    className="p-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-white shadow-lg active:scale-95 transition-all"
+                >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
                 </button>
              </div>
            )}
@@ -213,28 +221,65 @@ const Dashboard: React.FC<DashboardProps> = ({
   const [editNameValue, setEditNameValue] = useState('');
   const [editAddressValue, setEditAddressValue] = useState('');
   const [shareProjectModal, setShareProjectModal] = useState<Project | null>(null);
+  const [budgetModalProject, setBudgetModalProject] = useState<Project | null>(null);
+
+  // Income form state
+  const [newIncomeAmount, setNewIncomeAmount] = useState<string>('');
+  const [newIncomeDate, setNewIncomeDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
   useEffect(() => {
     setProjects(initialProjects);
   }, [initialProjects]);
 
-  // handleMoveProject manages ordering internally within Dashboard component
   const handleMoveProject = async (index: number, direction: 'up' | 'down') => {
     const targetIndex = direction === 'up' ? index - 1 : index + 1;
     if (targetIndex < 0 || targetIndex >= projects.length) return;
 
     const newProjects = [...projects];
-    // Swap items
     [newProjects[index], newProjects[targetIndex]] = [newProjects[targetIndex], newProjects[index]];
 
-    // Re-assign orders
     const finalized = newProjects.map((p, i) => ({ ...p, order: i }));
     setProjects(finalized);
 
-    // Save orders to DB
     for (const p of finalized) {
       await saveProject(p);
     }
+  };
+
+  const handleAddIncome = async () => {
+    if (!budgetModalProject || !newIncomeAmount) return;
+    const amount = parseFloat(newIncomeAmount);
+    if (isNaN(amount)) return;
+
+    const newIncome: Income = {
+        id: generateId(),
+        amount,
+        date: new Date(newIncomeDate).getTime()
+    };
+
+    const updatedProject = {
+        ...budgetModalProject,
+        incomes: [...(budgetModalProject.incomes || []), newIncome]
+    };
+
+    await saveProject(updatedProject);
+    setBudgetModalProject(updatedProject);
+    setNewIncomeAmount('');
+    // Refresh parent list
+    setProjects(prev => prev.map(p => p.id === updatedProject.id ? updatedProject : p));
+  };
+
+  const handleDeleteIncome = async (incomeId: string) => {
+    if (!budgetModalProject || !confirm('Удалить эту запись о приходе?')) return;
+    
+    const updatedProject = {
+        ...budgetModalProject,
+        incomes: (budgetModalProject.incomes || []).filter(inc => inc.id !== incomeId)
+    };
+
+    await saveProject(updatedProject);
+    setBudgetModalProject(updatedProject);
+    setProjects(prev => prev.map(p => p.id === updatedProject.id ? updatedProject : p));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -299,6 +344,77 @@ const Dashboard: React.FC<DashboardProps> = ({
           </div>
       )}
 
+      {/* БЮДЖЕТ МОДАЛКА */}
+      {budgetModalProject && (
+          <div className="fixed inset-0 bg-slate-950/90 z-[60] flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-200">
+              <div className="bg-slate-900 border border-slate-800 w-full max-w-sm rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[80vh]">
+                  <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-950/30">
+                      <div>
+                        <h3 className="text-sm font-bold text-emerald-400 coding-font uppercase tracking-tighter leading-none">УПРАВЛЕНИЕ БЮДЖЕТОМ</h3>
+                        <p className="text-[10px] text-slate-500 font-bold mt-1 uppercase">{budgetModalProject.name}</p>
+                      </div>
+                      <button onClick={() => setBudgetModalProject(null)} className="text-slate-500 hover:text-white transition-colors">
+                          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                      </button>
+                  </div>
+
+                  <div className="p-4 bg-slate-950/40 border-b border-slate-800 space-y-3">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                            <span className="text-[7px] font-bold text-slate-500 uppercase tracking-widest font-mono">Сумма (₽)</span>
+                            <input 
+                                type="number" 
+                                value={newIncomeAmount}
+                                onChange={e => setNewIncomeAmount(e.target.value)}
+                                className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-sm text-white focus:border-emerald-500 outline-none tabular-nums"
+                                placeholder="0.00"
+                            />
+                        </div>
+                        <div className="space-y-1">
+                            <span className="text-[7px] font-bold text-slate-500 uppercase tracking-widest font-mono">Дата</span>
+                            <input 
+                                type="date" 
+                                value={newIncomeDate}
+                                onChange={e => setNewIncomeDate(e.target.value)}
+                                className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-sm text-white focus:border-emerald-500 outline-none"
+                            />
+                        </div>
+                      </div>
+                      <button 
+                        onClick={handleAddIncome}
+                        className="w-full bg-emerald-600 hover:bg-emerald-500 py-2 rounded-xl font-bold text-white uppercase text-[9px] tracking-widest shadow-lg transition-all"
+                      >
+                        ДОБАВИТЬ ПРИХОД
+                      </button>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto p-4 space-y-2 no-scrollbar">
+                      <h4 className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mb-2 font-mono">ИСТОРИЯ ПОСТУПЛЕНИЙ</h4>
+                      {(budgetModalProject.incomes || []).length > 0 ? (
+                        [...(budgetModalProject.incomes || [])].sort((a,b) => b.date - a.date).map(inc => (
+                            <div key={inc.id} className="flex items-center justify-between bg-slate-900/50 border border-slate-800 p-2 rounded-lg">
+                                <div>
+                                    <div className="text-[12px] font-bold text-white tabular-nums">{inc.amount.toLocaleString()} ₽</div>
+                                    <div className="text-[8px] text-slate-500 font-mono">{new Date(inc.date).toLocaleDateString('ru')}</div>
+                                </div>
+                                <button 
+                                    onClick={() => handleDeleteIncome(inc.id)}
+                                    className="p-1.5 text-slate-500 hover:text-red-500 transition-colors"
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                </button>
+                            </div>
+                        ))
+                      ) : (
+                          <div className="text-center py-6 opacity-20 text-[9px] font-mono uppercase font-bold tracking-widest">Нет записей</div>
+                      )}
+                  </div>
+              </div>
+          </div>
+      )}
+
       {shareProjectModal && (
         <div className="fixed inset-0 bg-slate-950/95 z-50 flex flex-col items-center justify-center p-6 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-200">
            <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl w-full max-w-sm shadow-2xl">
@@ -357,6 +473,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             onShareClick={setShareProjectModal}
             onQuickAction={onQuickAction}
             onMove={handleMoveProject}
+            onBudgetClick={setBudgetModalProject}
           />
         )) : (
           <div className="col-span-full py-12 text-center opacity-20 flex flex-col items-center gap-3 border border-dashed border-slate-800 rounded-xl">

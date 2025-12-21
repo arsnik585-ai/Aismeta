@@ -19,6 +19,13 @@ export interface Entry {
   archived?: boolean;
 }
 
+export interface Income {
+  id: string;
+  amount: number;
+  date: number;
+  comment?: string;
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -26,4 +33,5 @@ export interface Project {
   createdAt: number;
   order?: number;
   archived?: boolean;
+  incomes?: Income[];
 }

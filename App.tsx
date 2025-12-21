@@ -61,12 +61,31 @@ const App: React.FC = () => {
     let fileName: string;
     let previewContent: string = "";
 
+    const totalIncomes = (data.project.incomes || []).reduce((sum, inc) => sum + inc.amount, 0);
+    const mTotal = data.entries.filter(e => e.type === EntryType.MATERIAL).reduce((s, e) => s + (e.total || 0), 0);
+    const lTotal = data.entries.filter(e => e.type === EntryType.LABOR).reduce((s, e) => s + (e.total || 0), 0);
+    const totalSpent = mTotal + lTotal;
+    const balance = totalIncomes - totalSpent;
+
     if (format === 'json') {
       previewContent = JSON.stringify(data, null, 2);
       blob = new Blob([previewContent], { type: 'application/json' });
       fileName = `${project.name}.ais`;
     } else if (format === 'text') {
       let text = `ОТЧЕТ: ${project.name}\nАДРЕС: ${project.address}\nДАТА: ${dateStr}\n\n`;
+      text += `ФИНАНСЫ:\n`;
+      text += `- Общий приход от заказчика: ${totalIncomes.toLocaleString()} руб.\n`;
+      text += `- Израсходовано: ${totalSpent.toLocaleString()} руб.\n`;
+      text += `- Остаток: ${balance.toLocaleString()} руб.\n\n`;
+      
+      if ((data.project.incomes || []).length > 0) {
+        text += `ИСТОРИЯ ПРИХОДОВ:\n`;
+        data.project.incomes!.sort((a,b) => a.date - b.date).forEach(inc => {
+          text += `- ${new Date(inc.date).toLocaleDateString('ru-RU')}: ${inc.amount.toLocaleString()} руб.\n`;
+        });
+        text += `\n`;
+      }
+
       text += `МАТЕРИАЛЫ:\n`;
       data.entries.filter(e => e.type === EntryType.MATERIAL).forEach(e => {
         text += `- ${e.name}: ${e.quantity || 0} ${e.unit || ''} x ${e.price || 0} = ${e.total || 0} руб.\n`;
@@ -79,9 +98,6 @@ const App: React.FC = () => {
       blob = new Blob([text], { type: 'text/plain' });
       fileName = `${project.name}_отчет.txt`;
     } else {
-      const mTotal = data.entries.filter(e => e.type === EntryType.MATERIAL).reduce((s, e) => s + (e.total || 0), 0);
-      const lTotal = data.entries.filter(e => e.type === EntryType.LABOR).reduce((s, e) => s + (e.total || 0), 0);
-
       const renderSection = (title: string, entries: Entry[]) => `
         <div class="section">
           <h2>${title}</h2>
@@ -128,8 +144,8 @@ const App: React.FC = () => {
             header { border-bottom: 1px solid #e2e8f0; padding-bottom: 15px; margin-bottom: 20px; }
             h1 { font-size: 1.5em; margin: 0; color: #0f172a; }
             .meta { margin-top: 5px; color: #64748b; font-size: 0.85em; }
-            .totals { display: flex; gap: 10px; margin-bottom: 25px; }
-            .total-item { flex: 1; background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; }
+            .totals { display: flex; gap: 10px; margin-bottom: 25px; flex-wrap: wrap; }
+            .total-item { flex: 1; min-width: 120px; background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; }
             .total-item span { display: block; font-size: 0.65em; text-transform: uppercase; color: #94a3b8; font-weight: 700; }
             .total-item strong { font-size: 1.2em; color: #0f172a; }
             .section { margin-bottom: 30px; }
@@ -154,10 +170,29 @@ const App: React.FC = () => {
               <div class="meta">📍 ${project.address || 'Адрес не указан'} • 📅 ${dateStr}</div>
             </header>
             <div class="totals">
-              <div class="total-item"><span>Мат</span><strong>${mTotal.toLocaleString()} ₽</strong></div>
-              <div class="total-item"><span>Раб</span><strong>${lTotal.toLocaleString()} ₽</strong></div>
-              <div class="total-item" style="border-color:#10b981"><span>Итого</span><strong>${(mTotal + lTotal).toLocaleString()} ₽</strong></div>
+              <div class="total-item"><span>Общий приход от заказчика</span><strong>${totalIncomes.toLocaleString()} ₽</strong></div>
+              <div class="total-item"><span>Материалы</span><strong>${mTotal.toLocaleString()} ₽</strong></div>
+              <div class="total-item"><span>Работы</span><strong>${lTotal.toLocaleString()} ₽</strong></div>
+              <div class="total-item" style="border-color:${balance < 0 ? '#ef4444' : '#10b981'}">
+                <span>${balance < 0 ? 'Перерасход' : 'Остаток'}</span>
+                <strong style="color:${balance < 0 ? '#ef4444' : '#059669'}">${Math.abs(balance).toLocaleString()} ₽</strong>
+              </div>
             </div>
+
+            ${(data.project.incomes || []).length > 0 ? `
+              <div class="section">
+                <h2>История приходов</h2>
+                <table>
+                  <thead><tr><th>Дата</th><th>Сумма</th></tr></thead>
+                  <tbody>
+                    ${data.project.incomes!.sort((a,b)=>a.date-b.date).map(inc => `
+                      <tr><td>${new Date(inc.date).toLocaleDateString('ru-RU')}</td><td class="bold">${inc.amount.toLocaleString()} ₽</td></tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+            ` : ''}
+
             ${renderSection('МАТЕРИАЛЫ', data.entries.filter(e => e.type === EntryType.MATERIAL))}
             ${renderSection('РАБОТЫ', data.entries.filter(e => e.type === EntryType.LABOR))}
           </div>
@@ -223,7 +258,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-200 flex flex-col max-w-5xl mx-auto shadow-[0_0_100px_rgba(0,0,0,0.5)] border-x border-slate-900">
+    <div className="min-h-screen bg-slate-950 text-slate-200 flex flex-col max-w-6xl mx-auto shadow-[0_0_100px_rgba(0,0,0,0.5)] border-x border-slate-900">
       <Header 
         isDetail={!!currentProject} 
         onBack={() => { setCurrentProject(null); setInitialAction(null); refreshProjects(); }}

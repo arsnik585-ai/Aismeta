@@ -90,7 +90,7 @@ const EntryCard: React.FC<{
     };
 
     return (
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-2 shadow-md space-y-1 relative group transition-all duration-200">
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 shadow-md space-y-1 relative group transition-all duration-200">
             <div className="flex justify-between items-start gap-1">
                 <div className="flex-1 min-w-0">
                     <textarea 
@@ -133,10 +133,10 @@ const EntryCard: React.FC<{
                           <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" /></svg>
                       </button>
                       {showMenu && (
-                          <div className="absolute right-0 top-6 w-32 bg-slate-800 border border-slate-700 rounded-lg shadow-2xl py-1 z-20 animate-in fade-in zoom-in-95 duration-75 origin-top-right">
+                          <div className="absolute right-0 top-6 w-36 bg-slate-800 border border-slate-700 rounded-lg shadow-2xl py-1 z-20 animate-in fade-in zoom-in-95 duration-75 origin-top-right">
                               <button onClick={(ev) => { ev.stopPropagation(); onTypeToggle(e.id); setShowMenu(false); }} className="w-full text-left px-2 py-1.5 text-[8px] font-bold text-slate-300 hover:bg-slate-700 uppercase tracking-widest flex items-center gap-1.5">
                                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" strokeWidth={2}/></svg>
-                                  ТИП
+                                  {e.type === EntryType.MATERIAL ? 'В РАБОТЫ' : 'В МАТЕРИАЛЫ'}
                               </button>
                               <button onClick={(ev) => { ev.stopPropagation(); onDelete(e.id); setShowMenu(false); }} className="w-full text-left px-2 py-1.5 text-[8px] font-bold text-red-400 hover:bg-red-950/30 uppercase tracking-widest flex items-center gap-1.5">
                                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
@@ -148,7 +148,7 @@ const EntryCard: React.FC<{
                 </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-1 bg-slate-950/40 p-1 rounded-lg border border-slate-800/40">
+            <div className="grid grid-cols-3 gap-1 bg-slate-950/40 p-1.5 rounded-lg border border-slate-800/40">
                 <div className="space-y-0">
                     <span className="block text-[7px] text-slate-300 font-mono uppercase tracking-tighter font-bold">Кол-во</span>
                     <input 
@@ -184,15 +184,15 @@ const EntryCard: React.FC<{
                 </div>
             </div>
 
-            <div className="flex items-center gap-1">
-                <div className="flex-1 flex gap-1 overflow-x-auto no-scrollbar items-center min-h-[32px]">
-                    <button 
-                        onClick={(ev) => { ev.stopPropagation(); fileInputRef.current?.click(); }}
-                        className="w-8 h-8 shrink-0 flex items-center justify-center rounded-md bg-slate-950 text-slate-300 hover:text-emerald-500 border border-slate-700 border-dashed transition-all active:scale-90"
-                    >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4" strokeWidth={2}/></svg>
-                        <input type="file" ref={fileInputRef} onChange={handleAddPhoto} className="hidden" accept="image/*" />
-                    </button>
+            <div className="flex items-center gap-2 pt-1 border-t border-slate-800/20">
+                <div className="text-left shrink-0 min-w-[70px]">
+                    <span className="block text-[6px] text-slate-400 font-mono uppercase tracking-widest leading-none font-bold">ИТОГО</span>
+                    <div className="text-[14px] font-bold text-white tabular-nums tracking-tighter leading-none mt-0.5">
+                        {(e.total || 0).toLocaleString()} <span className="text-[8px] opacity-40 font-normal">₽</span>
+                    </div>
+                </div>
+
+                <div className="flex-1 flex gap-1 overflow-x-auto no-scrollbar items-center justify-end">
                     {e.images?.map((img, idx) => (
                         <div key={idx} className="relative shrink-0">
                             <img 
@@ -203,12 +203,14 @@ const EntryCard: React.FC<{
                         </div>
                     ))}
                 </div>
-                <div className="text-right shrink-0">
-                    <span className="block text-[6px] text-slate-300 font-mono uppercase tracking-widest leading-none font-bold">ИТОГО</span>
-                    <div className="text-[15px] font-bold text-white tabular-nums tracking-tighter leading-none mt-0.5">
-                        {(e.total || 0).toLocaleString()} <span className="text-[8px] opacity-40 font-normal">₽</span>
-                    </div>
-                </div>
+
+                <button 
+                    onClick={(ev) => { ev.stopPropagation(); fileInputRef.current?.click(); }}
+                    className="w-8 h-8 shrink-0 flex items-center justify-center rounded-md bg-slate-950 text-slate-300 hover:text-emerald-500 border border-slate-700 border-dashed transition-all active:scale-90"
+                >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4" strokeWidth={2}/></svg>
+                    <input type="file" ref={fileInputRef} onChange={handleAddPhoto} className="hidden" accept="image/*" />
+                </button>
             </div>
         </div>
     );
@@ -315,7 +317,7 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, activeTab, onDat
 
   return (
     <div className="flex flex-col h-full pt-0.5">
-      <div className="flex-1 overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-1.5 pb-28 px-1 no-scrollbar">
+      <div className="flex-1 overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-2 pb-28 px-1 no-scrollbar">
         {currentTabEntries.map((e, idx) => (
             <EntryCard 
               key={e.id} 
@@ -359,27 +361,27 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, activeTab, onDat
 
       {fullscreenData && (
         <div className="fixed inset-0 bg-black/98 z-[100] flex flex-col items-center justify-center p-4">
-          <button 
-            onClick={() => setFullscreenData(null)}
-            className="absolute right-6 p-2 bg-white/10 rounded-full text-white backdrop-blur-md"
-            style={{ top: 'calc(1.5rem + env(safe-area-inset-top))' }}
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-          </button>
-          
           <img 
             src={`data:image/jpeg;base64,${fullscreenData.img}`} 
             className="max-w-full max-h-[75vh] rounded-lg shadow-2xl object-contain animate-in zoom-in-95 duration-150" 
             alt="Fullscreen" 
           />
           
-          <button 
-            onClick={() => removePhotoFromEntry(fullscreenData.entryId, fullscreenData.idx)}
-            className="mt-8 px-8 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold uppercase text-[10px] tracking-widest shadow-xl flex items-center gap-2"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-            Удалить фото
-          </button>
+          <div className="flex gap-3 mt-8 w-full max-w-xs">
+            <button 
+                onClick={() => removePhotoFromEntry(fullscreenData.entryId, fullscreenData.idx)}
+                className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold uppercase text-[10px] tracking-widest shadow-xl flex items-center justify-center gap-2"
+            >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" strokeWidth={2}/></svg>
+                Удалить
+            </button>
+            <button 
+                onClick={() => setFullscreenData(null)}
+                className="flex-1 px-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold uppercase text-[10px] tracking-widest shadow-xl flex items-center justify-center gap-2"
+            >
+                Назад
+            </button>
+          </div>
         </div>
       )}
     </div>
