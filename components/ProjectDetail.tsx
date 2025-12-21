@@ -9,6 +9,8 @@ interface ProjectDetailProps {
   onDataChange: () => void;
 }
 
+const COMMON_UNITS = ['шт', 'м²', 'м³', 'м.п.', 'кг', 'т', 'компл.', 'усл. ед.', 'час', 'смена'];
+
 const EntryCard: React.FC<{
     e: Entry;
     onSelect: (e: Entry) => void;
@@ -208,7 +210,7 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, activeTab, onDat
   const addManualEntry = async () => {
     const newEntry: Entry = {
       id: generateId(), projectId: project.id, type: activeTab,
-      name: '', quantity: 1, unit: 'шт', price: 0, total: 0, vendor: '',
+      name: '', quantity: 1, unit: '', price: 0, total: 0, vendor: '',
       date: Date.now(), archived: false
     };
     await saveEntry(newEntry);
@@ -244,13 +246,6 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, activeTab, onDat
           <div className="bg-slate-900 w-full max-w-xl p-6 md:p-8 rounded-[2.5rem] border border-slate-800 space-y-6 shadow-2xl my-auto">
              <div className="flex justify-between items-center border-b border-slate-800 pb-4">
                 <h2 className="text-xl font-bold text-emerald-400 coding-font tracking-tighter uppercase">_РЕДАКТОР</h2>
-                <div className="flex gap-2">
-                    <input type="file" ref={editorFileInputRef} className="hidden" accept="image/*" onChange={handleEditorPhotoAdd} />
-                    <button onClick={() => editorFileInputRef.current?.click()} className="flex items-center gap-2 px-3 py-2 bg-slate-800 text-cyan-400 rounded-xl active:scale-95 text-[10px] font-bold uppercase tracking-widest border border-slate-700">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h14a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                        ФОТО
-                    </button>
-                </div>
              </div>
 
              <div className="space-y-4">
@@ -267,7 +262,16 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, activeTab, onDat
                     </div>
                     <div className="space-y-1">
                         <span className="text-[10px] text-slate-500 font-mono uppercase px-2">ЕД.ИЗМ</span>
-                        <input value={editingEntry.unit || ''} onChange={e => setEditingEntry({...editingEntry, unit: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-4 text-white outline-none text-sm" placeholder="шт" />
+                        <input 
+                          list="units-list"
+                          value={editingEntry.unit || ''} 
+                          onChange={e => setEditingEntry({...editingEntry, unit: e.target.value})} 
+                          className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-4 text-white outline-none text-sm" 
+                          placeholder="шт, м2..." 
+                        />
+                        <datalist id="units-list">
+                          {COMMON_UNITS.map(u => <option key={u} value={u} />)}
+                        </datalist>
                     </div>
                 </div>
                 
@@ -277,26 +281,32 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, activeTab, onDat
                 </div>
              </div>
 
-             {/* Images Section */}
-             {editingEntry.images && editingEntry.images.length > 0 && (
-                <div className="space-y-2 pt-2 border-t border-slate-800/50">
-                    <span className="text-[10px] text-slate-500 font-mono uppercase px-2">ИЗОБРАЖЕНИЯ</span>
-                    <div className="flex gap-3 overflow-x-auto pb-4 no-scrollbar">
-                        {editingEntry.images.map((img, idx) => (
-                            <div key={idx} className="relative shrink-0 group">
-                                <img src={`data:image/jpeg;base64,${img}`} className="w-24 h-24 object-cover rounded-2xl border border-slate-700 shadow-xl" onClick={() => setFullscreenImage(img)} />
-                                <button onClick={() => removeImage(idx)} className="absolute -top-2 -right-2 bg-red-600 text-white p-1.5 rounded-full shadow-lg active:scale-90 border-2 border-slate-900">
-                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
-                                </button>
-                            </div>
-                        ))}
-                        <button onClick={() => editorFileInputRef.current?.click()} className="w-24 h-24 flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-800 bg-slate-950/50 text-slate-600 active:bg-slate-800/50 shrink-0">
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-                            <span className="text-[8px] font-bold">ДОБАВИТЬ</span>
-                        </button>
-                    </div>
+             {/* Images Section with Move Photo Button */}
+             <div className="space-y-2 pt-2 border-t border-slate-800/50">
+                <div className="flex justify-between items-center px-2">
+                    <span className="text-[10px] text-slate-500 font-mono uppercase">ИЗОБРАЖЕНИЯ</span>
+                    <input type="file" ref={editorFileInputRef} className="hidden" accept="image/*" onChange={handleEditorPhotoAdd} />
                 </div>
-             )}
+                <div className="flex gap-3 overflow-x-auto pb-4 no-scrollbar items-center">
+                    {/* Move Add Photo Button Here */}
+                    <button 
+                      onClick={() => editorFileInputRef.current?.click()} 
+                      className="w-24 h-24 flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-800 bg-slate-950/50 text-cyan-400 active:bg-slate-800/50 shrink-0 shadow-lg"
+                    >
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h14a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                        <span className="text-[8px] font-bold uppercase tracking-widest">ФОТО</span>
+                    </button>
+
+                    {editingEntry.images && editingEntry.images.map((img, idx) => (
+                        <div key={idx} className="relative shrink-0 group">
+                            <img src={`data:image/jpeg;base64,${img}`} className="w-24 h-24 object-cover rounded-2xl border border-slate-700 shadow-xl" onClick={() => setFullscreenImage(img)} />
+                            <button onClick={() => removeImage(idx)} className="absolute -top-2 -right-2 bg-red-600 text-white p-1.5 rounded-full shadow-lg active:scale-90 border-2 border-slate-900">
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                    ))}
+                </div>
+             </div>
 
              <div className="flex gap-4 pt-4">
                 <button onClick={() => setEditingEntry(null)} className="flex-1 bg-slate-800 py-4 rounded-2xl font-bold text-slate-400 uppercase text-xs hover:bg-slate-700 transition-colors">Отмена</button>
@@ -309,7 +319,6 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, activeTab, onDat
       {fullscreenImage && (
         <div className="fixed inset-0 bg-black/98 z-[100] flex flex-col items-center justify-center p-4" onClick={() => setFullscreenImage(null)}>
           <button className="absolute top-6 right-6 p-3 bg-white/10 rounded-full text-white backdrop-blur-md">
-            {/* Fix Linecap/Linejoin typo */}
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
           <img src={`data:image/jpeg;base64,${fullscreenImage}`} className="max-w-full max-h-full rounded-lg shadow-[0_0_50px_rgba(0,0,0,0.5)] object-contain" alt="Fullscreen" />
