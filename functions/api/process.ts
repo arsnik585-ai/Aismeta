@@ -7,9 +7,12 @@ interface Env {
 export const onRequestPost = async (context: { request: Request; env: Env }) => {
   const { request, env } = context;
 
+  // Проверка наличия ключа в Secrets панели управления Cloudflare
   if (!env.API_KEY) {
     return new Response(
-      JSON.stringify({ error: "Ключ API_KEY не найден в настройках Cloudflare (Variables -> Secrets)" }), 
+      JSON.stringify({ 
+        error: "API_KEY не настроен. Пожалуйста, добавьте его в Settings -> Variables and Secrets в панели Cloudflare Pages." 
+      }), 
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
@@ -17,45 +20,46 @@ export const onRequestPost = async (context: { request: Request; env: Env }) => 
   try {
     const { action, payload } = await request.json() as { action: string; payload: string };
 
+    // Инициализация Gemini API
     const ai = new GoogleGenAI({ apiKey: env.API_KEY });
     
     const SYSTEM_INSTRUCTION = `Вы — эксперт BuildFlow AI. 
-    Ваша задача: извлекать строительные материалы и работы из чеков или голоса.
-    Верни строго массив объектов JSON. Каждое поле должно быть заполнено на основе контекста. 
-    Типы могут быть только MATERIAL или LABOR.`;
+    Ваша задача: извлекать строительные материалы и работы из чеков (фото) или голоса.
+    Верни строго массив объектов JSON. Каждое поле должно быть заполнено на основе предоставленного контекста.
+    Поле 'type' может принимать только значения 'MATERIAL' или 'LABOR'.`;
 
     const ITEM_SCHEMA = {
       type: Type.OBJECT,
       properties: {
-        name: { type: Type.STRING },
-        type: { type: Type.STRING, enum: ['MATERIAL', 'LABOR'] },
-        quantity: { type: Type.NUMBER, nullable: true },
-        unit: { type: Type.STRING, nullable: true },
-        price: { type: Type.NUMBER, nullable: true },
-        total: { type: Type.NUMBER, nullable: true },
-        vendor: { type: Type.STRING, nullable: true },
+        name: { type: Type.STRING, description: "Название позиции" },
+        type: { type: Type.STRING, enum: ['MATERIAL', 'LABOR'], description: "Материал или работа" },
+        quantity: { type: Type.NUMBER, nullable: true, description: "Количество" },
+        unit: { type: Type.STRING, nullable: true, description: "Единица измерения" },
+        price: { type: Type.NUMBER, nullable: true, description: "Цена за единицу" },
+        total: { type: Type.NUMBER, nullable: true, description: "Итоговая сумма по позиции" },
+        vendor: { type: Type.STRING, nullable: true, description: "Поставщик или исполнитель" },
       },
       required: ['name', 'type'],
     };
 
-    const model = 'gemini-3-flash-preview';
+    const modelName = 'gemini-3-flash-preview';
     let contents;
 
     if (action === 'image') {
       contents = {
         parts: [
           { inlineData: { mimeType: 'image/jpeg', data: payload } },
-          { text: "Проанализируй фото чека и извлеки все позиции товаров и услуг в JSON массив." }
+          { text: "Найди все товары и услуги в этом чеке и выведи их списком в формате JSON." }
         ]
       };
     } else {
       contents = {
-        parts: [{ text: `Разбери следующую голосовую заметку на составляющие сметы: ${payload}` }]
+        parts: [{ text: `Проанализируй следующую строительную заметку и извлеки данные для сметы: ${payload}` }]
       };
     }
 
     const response = await ai.models.generateContent({
-      model,
+      model: modelName,
       contents,
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
@@ -67,13 +71,15 @@ export const onRequestPost = async (context: { request: Request; env: Env }) => 
       }
     });
 
-    return new Response(response.text || "[]", {
+    const result = response.text || "[]";
+    return new Response(result, {
       headers: { "Content-Type": "application/json" }
     });
 
   } catch (err: any) {
+    console.error("Worker Execution Error:", err);
     return new Response(
-      JSON.stringify({ error: err.message || "Ошибка при обращении к ИИ" }), 
+      JSON.stringify({ error: err.message || "Произошла ошибка при обработке данных через ИИ" }), 
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
