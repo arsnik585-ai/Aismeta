@@ -10,7 +10,7 @@ export const onRequestPost = async (context: { request: Request }) => {
 
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     
-    const SYSTEM_INSTRUCTION = `Вы — сметчик BuildFlow. Преобразуйте ввод в JSON массив позиций MATERIAL/LABOR. Цены в RUB.`;
+    const SYSTEM_INSTRUCTION = `Вы — сметчик smeta. Преобразуйте ввод в JSON массив позиций MATERIAL/LABOR. Цены в RUB.`;
 
     const RESPONSE_SCHEMA = {
       type: Type.ARRAY,

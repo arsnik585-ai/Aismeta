@@ -1,9 +1,16 @@
+
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 
-// Service Worker is completely disabled to avoid Origin Mismatch and Invalid URL errors in the sandbox.
-// The app remains offline-first through IndexedDB storage.
+// Service Worker Registration for PWA / Offline functionality
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then(reg => console.log('SW registered:', reg))
+      .catch(err => console.log('SW registration failed:', err));
+  });
+}
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {

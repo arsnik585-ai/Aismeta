@@ -1,5 +1,5 @@
 {
-  "name": "BuildFlow",
+  "name": "smeta",
   "description": "An offline-first construction management PWA for manual material and labor tracking.",
   "requestFramePermissions": [
     "camera"

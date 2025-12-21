@@ -2,12 +2,12 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
 /**
- * BuildFlow AI Core Service (v3.0 - Final)
+ * smeta AI Core Service (v3.0 - Final)
  */
 
 const MODEL_NAME = 'gemini-3-flash-preview';
 
-const SYSTEM_INSTRUCTION = `Вы — ведущий инженер-сметчик системы BuildFlow AI. 
+const SYSTEM_INSTRUCTION = `Вы — ведущий инженер-сметчик системы smeta AI. 
 Ваша специализация: мгновенный аудит строительных расходов.
 
 ЗАДАЧА: Превратить хаотичный ввод (фото чека или текст аудио-заметки) в чистый структурированный JSON-список.
@@ -39,7 +39,7 @@ const RESPONSE_SCHEMA = {
   },
 };
 
-export const BuildFlowAssistant = {
+export const SmetaAssistant = {
   async analyzeReceipt(base64Image: string) {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     

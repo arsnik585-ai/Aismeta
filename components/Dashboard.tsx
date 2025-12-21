@@ -35,11 +35,13 @@ const ProjectCard: React.FC<{
   const isMoving = useRef<boolean>(false);
 
   const onTouchStart = (e: React.TouchEvent) => {
+    if (isArchivedView) return; // Disable swipe in archive
     touchStart.current = e.targetTouches[0].clientX;
     isMoving.current = false;
   };
 
   const onTouchMove = (e: React.TouchEvent) => {
+    if (isArchivedView) return; // Disable swipe in archive
     const diff = e.targetTouches[0].clientX - touchStart.current;
     if (Math.abs(diff) > 10) isMoving.current = true;
     if (diff < 0) {
@@ -50,6 +52,7 @@ const ProjectCard: React.FC<{
   };
 
   const onTouchEnd = () => {
+    if (isArchivedView) return;
     if (translateX < -60) {
       setTranslateX(-100);
     } else {
@@ -80,15 +83,7 @@ const ProjectCard: React.FC<{
   return (
     <div className="relative overflow-hidden rounded-[2rem] bg-slate-950">
       <div className="absolute inset-0 flex items-center justify-end px-4 gap-2">
-        {isArchivedView ? (
-          <button 
-            onClick={handleRestore} 
-            className="bg-emerald-600 text-white h-[80%] px-6 rounded-xl text-[9px] font-bold uppercase shadow-lg flex flex-col items-center justify-center gap-1 active:bg-emerald-500"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-            ВЕРНУТЬ
-          </button>
-        ) : (
+        {!isArchivedView && (
           <button 
               onClick={handleDelete} 
               className="bg-red-600 text-white h-[80%] px-6 rounded-xl text-[9px] font-bold uppercase shadow-lg flex flex-col items-center justify-center gap-1 active:bg-red-500"
@@ -105,7 +100,7 @@ const ProjectCard: React.FC<{
         onTouchEnd={onTouchEnd}
         onClick={() => !isMoving.current && translateX === 0 && onSelect(p)}
         style={{ transform: `translateX(${translateX}px)` }}
-        className={`bg-slate-900 border border-slate-800 p-5 rounded-[2rem] transition-transform duration-200 ease-out cursor-pointer relative z-10 shadow-xl active:bg-slate-800 h-full flex flex-col justify-between ${isArchivedView ? 'opacity-70 grayscale-[0.3]' : ''}`}
+        className={`bg-slate-900 border border-slate-800 p-5 rounded-[2rem] transition-transform duration-200 ease-out cursor-pointer relative z-10 shadow-xl active:bg-slate-800 h-full flex flex-col justify-between ${isArchivedView ? 'opacity-90' : ''}`}
       >
         <div>
           <div className="flex justify-between items-start mb-4">
@@ -303,23 +298,13 @@ const Dashboard: React.FC<DashboardProps> = ({
                     </div>
                  </button>
                  <button 
-                  onClick={() => { onShare(shareProjectModal, 'html'); setShareProjectModal(null); }}
-                  className="w-full bg-slate-950 hover:bg-emerald-950/20 border border-slate-800 p-5 rounded-2xl flex items-center gap-4 transition-all active:scale-95 group"
-                 >
-                    <div className="p-3 bg-emerald-900/20 text-emerald-400 rounded-xl"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h14a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg></div>
-                    <div className="text-left">
-                      <div className="text-sm font-bold text-white">HTML отчет (с фото)</div>
-                      <div className="text-[10px] text-emerald-500 uppercase font-mono tracking-widest">Просмотр и печать в PDF</div>
-                    </div>
-                 </button>
-                 <button 
                   onClick={() => { onShare(shareProjectModal, 'json'); setShareProjectModal(null); }}
                   className="w-full bg-slate-950 hover:bg-cyan-950/20 border border-slate-800 p-5 rounded-2xl flex items-center gap-4 transition-all active:scale-95 group"
                  >
                     <div className="p-3 bg-cyan-900/20 text-cyan-400 rounded-xl"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" /></svg></div>
                     <div className="text-left">
                       <div className="text-sm font-bold text-white">Перенос проекта (.ais)</div>
-                      <div className="text-[10px] text-cyan-400 uppercase font-mono tracking-widest">Для загрузки в Aiсмета</div>
+                      <div className="text-[10px] text-cyan-400 uppercase font-mono tracking-widest">Для загрузки в smeta</div>
                     </div>
                  </button>
               </div>

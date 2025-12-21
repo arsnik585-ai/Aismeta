@@ -1,24 +1,18 @@
-const CACHE_NAME = 'buildflow-v6';
-const ASSETS = [
+
+const CACHE_NAME = 'smeta-cache-v1';
+const STATIC_ASSETS = [
   './',
   'index.html',
-  'manifest.json'
+  'manifest.json',
+  'https://cdn.tailwindcss.com',
+  'https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&family=Inter:wght@400;700&display=swap'
 ];
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      // Пытаемся кешировать, но не ломаем установку если какой-то файл не найден
-      return Promise.allSettled(
-        ASSETS.map(url => cache.add(url))
-      ).then(results => {
-        results.forEach((res, i) => {
-          if (res.status === 'rejected') {
-            console.warn(`[SW] Failed to cache ${ASSETS[i]}:`, res.reason);
-          }
-        });
-      });
+      return cache.addAll(STATIC_ASSETS);
     })
   );
 });
@@ -34,17 +28,30 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Игнорируем API запросы и внешние ресурсы
+  // Do not cache API requests or external ESM modules that might need network
   if (event.request.url.includes('/api/')) {
     return;
   }
 
   event.respondWith(
-    caches.match(event.request).then((response) => {
-      return response || fetch(event.request).catch(() => {
-        // Возвращаем главную страницу если оффлайн и это навигация
+    caches.match(event.request).then((cachedResponse) => {
+      if (cachedResponse) {
+        return cachedResponse;
+      }
+
+      return fetch(event.request).then((networkResponse) => {
+        // Cache new assets dynamically (like hashed JS/CSS from Vite)
+        if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
+        }
+        return networkResponse;
+      }).catch(() => {
+        // If offline and requesting navigation, return index.html
         if (event.request.mode === 'navigate') {
-          return caches.match('./');
+          return caches.match('./') || caches.match('index.html');
         }
       });
     })

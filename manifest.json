@@ -1,6 +1,7 @@
+
 {
-  "name": "BuildFlow AI",
-  "short_name": "BuildFlow",
+  "name": "smeta AI",
+  "short_name": "smeta",
   "description": "Умная строительная смета с ИИ",
   "start_url": "/",
   "display": "standalone",

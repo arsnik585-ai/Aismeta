@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Project, Entry, EntryType } from './types';
-import { getProjects, saveProject, getEntriesByProject, deleteProject, generateId } from './db';
+import { getProjects, saveProject, getEntriesByProject, deleteProject, generateId, getFullProjectData, saveEntry } from './db';
 import Dashboard from './components/Dashboard';
 import ProjectDetail from './components/ProjectDetail';
 import Header from './components/Header';
@@ -43,6 +43,82 @@ const App: React.FC = () => {
     refreshProjects();
   }, [refreshProjects]);
 
+  const handleExport = async (project: Project, format: 'text' | 'html' | 'json') => {
+    const data = await getFullProjectData(project.id);
+    
+    if (format === 'json') {
+      const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${project.name}.ais`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } else if (format === 'text') {
+      let text = `ПРОЕКТ: ${project.name}\nАДРЕС: ${project.address}\n\n`;
+      text += `--- МАТЕРИАЛЫ ---\n`;
+      data.entries.filter(e => e.type === EntryType.MATERIAL).forEach(e => {
+        text += `- ${e.name}: ${e.quantity} ${e.unit} x ${e.price} = ${e.total} руб. (${e.vendor || '-'})\n`;
+      });
+      text += `\n--- РАБОТЫ ---\n`;
+      data.entries.filter(e => e.type === EntryType.LABOR).forEach(e => {
+        text += `- ${e.name}: ${e.quantity} ${e.unit} x ${e.price} = ${e.total} руб. (${e.vendor || '-'})\n`;
+      });
+      const blob = new Blob([text], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${project.name}_смета.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  };
+
+  const handleImport = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const content = e.target?.result as string;
+        const data = JSON.parse(content);
+        
+        // Comprehensive check for .ais structure
+        if (!data.project || !Array.isArray(data.entries)) {
+          throw new Error("Неверный формат файла .ais");
+        }
+
+        const newProjectId = generateId();
+        const importedProject = { 
+          ...data.project, 
+          id: newProjectId, 
+          name: `${data.project.name} (Импорт)`,
+          archived: false,
+          createdAt: Date.now()
+        };
+
+        await saveProject(importedProject);
+        
+        // Save entries sequentially to ensure data integrity
+        for (const entry of data.entries) {
+          const newEntryId = generateId();
+          await saveEntry({ 
+            ...entry, 
+            id: newEntryId, 
+            projectId: newProjectId, 
+            archived: false 
+          });
+        }
+        
+        setViewingArchive(false);
+        await refreshProjects();
+        alert("Проект успешно импортирован");
+      } catch (err) {
+        console.error(err);
+        alert("Ошибка при импорте. Проверьте файл .ais");
+      }
+    };
+    reader.readAsText(file);
+  };
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200 flex flex-col max-w-5xl mx-auto shadow-[0_0_100px_rgba(0,0,0,0.5)] border-x border-slate-900">
       <Header 
@@ -52,10 +128,10 @@ const App: React.FC = () => {
           setInitialAction(null); 
           refreshProjects();
         }}
-        title={currentProject ? currentProject.name : 'BuildFlow'}
+        title={currentProject ? currentProject.name : 'smeta'}
         viewingArchive={viewingArchive}
         onToggleArchive={() => setViewingArchive(!viewingArchive)}
-        onImport={(file) => {}} 
+        onImport={handleImport} 
         activeTab={activeTab}
         onTabChange={setActiveTab}
       />
@@ -105,7 +181,7 @@ const App: React.FC = () => {
                     await refreshProjects();
                 }
             }}
-            onShare={(p, f) => {}}
+            onShare={handleExport}
             onQuickAction={(p, a) => {
                 setCurrentProject(p);
                 setInitialAction(a);

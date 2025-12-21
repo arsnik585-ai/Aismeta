@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 interface SyncStatusProps {
@@ -18,7 +19,7 @@ const SyncStatus: React.FC<SyncStatusProps> = ({ isOnline, isSyncing }) => {
           {isSyncing && <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${!isOnline ? 'bg-red-500' : 'bg-emerald-500'}`}></span>}
           <span className={`relative inline-flex rounded-full h-2 w-2 ${!isOnline ? 'bg-red-500' : 'bg-emerald-500'}`}></span>
         </div>
-        {!isOnline ? 'NETWORK_OFFLINE :: BUFFER_MODE' : (isSyncing ? 'AI_PROCESSING :: ANALYZING_DATA' : 'BUILDFLOW_AI :: READY')}
+        {!isOnline ? 'NETWORK_OFFLINE :: BUFFER_MODE' : (isSyncing ? 'AI_PROCESSING :: ANALYZING_DATA' : 'smeta_AI :: READY')}
       </div>
     </div>
   );

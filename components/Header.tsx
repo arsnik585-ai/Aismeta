@@ -56,14 +56,14 @@ const Header: React.FC<HeaderProps> = ({ isDetail, onBack, title, viewingArchive
         ) : (
           <div className="flex flex-col overflow-hidden">
             <h1 className="text-lg font-bold truncate coding-font text-white">{title}</h1>
-            {viewingArchive && <span className="text-[10px] text-amber-500 tracking-widest uppercase font-mono">Просмотр архива</span>}
+            {viewingArchive && <span className="text-[10px] text-amber-500 tracking-widest uppercase font-mono">Архив объектов</span>}
           </div>
         )}
       </div>
 
       {!isDetail && (
         <div className="flex gap-2">
-          {onImport && (
+          {!viewingArchive && onImport && (
             <>
               <input 
                 type="file" 
@@ -87,12 +87,21 @@ const Header: React.FC<HeaderProps> = ({ isDetail, onBack, title, viewingArchive
           {onToggleArchive && (
             <button 
               onClick={onToggleArchive}
-              className={`p-2.5 rounded-xl border transition-all active:scale-95 ${viewingArchive ? 'bg-amber-600 border-amber-500 text-white' : 'bg-slate-950 border-slate-800 text-amber-500'}`}
+              className={`p-2.5 rounded-xl border transition-all active:scale-95 flex items-center gap-2 px-4 ${viewingArchive ? 'bg-amber-600 border-amber-500 text-white' : 'bg-slate-950 border-slate-800 text-amber-500'}`}
               title={viewingArchive ? "Вернуться к активным" : "Открыть архив объектов"}
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-              </svg>
+              {viewingArchive ? (
+                <>
+                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  <span className="text-[10px] font-bold uppercase tracking-widest hidden sm:inline">ВЫХОД</span>
+                </>
+              ) : (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                </svg>
+              )}
             </button>
           )}
         </div>

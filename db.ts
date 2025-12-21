@@ -1,7 +1,7 @@
 
 import { Project, Entry } from './types';
 
-const DB_NAME = 'AiSmetaDB';
+const DB_NAME = 'SmetaDB';
 const DB_VERSION = 1;
 
 export const generateId = () => {
@@ -48,7 +48,7 @@ export const deleteProject = async (projectId: string) => {
     const index = entryStore.index('projectId');
     const request = index.openCursor(IDBKeyRange.only(projectId));
     request.onsuccess = (event: any) => {
-      const cursor = event.target.result;
+      const cursor = (event.target as any).result;
       if (cursor) {
         entryStore.delete(cursor.primaryKey);
         cursor.continue();
