@@ -50,7 +50,7 @@ const EntryCard: React.FC<{
     onUpdate: (updated: Entry) => void;
     onDelete: (id: string) => void;
     onTypeToggle: (id: string) => void;
-    onShowFullscreen: (img: string) => void;
+    onShowFullscreen: (img: string, entryId: string, photoIdx: number) => void;
     onDragStart: (e: React.DragEvent, index: number) => void;
     onDragOver: (e: React.DragEvent, index: number) => void;
     onDrop: (e: React.DragEvent, index: number) => void;
@@ -91,12 +91,6 @@ const EntryCard: React.FC<{
         if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
-    const removePhoto = (idx: number) => {
-        const updatedImages = [...(e.images || [])];
-        updatedImages.splice(idx, 1);
-        handleChange({ images: updatedImages });
-    };
-
     return (
         <div 
           className={`bg-slate-900 border border-slate-800 rounded-xl p-2 shadow-md space-y-1 relative group transition-all duration-200 ${isDragged ? 'opacity-20 scale-95' : 'opacity-100'}`}
@@ -112,7 +106,7 @@ const EntryCard: React.FC<{
                         onChange={(evt) => handleChange({ name: evt.target.value })}
                         placeholder="Наименование..."
                         rows={1}
-                        className="w-full bg-transparent text-[13px] text-white font-semibold outline-none focus:text-emerald-400 placeholder:text-slate-700 resize-none overflow-hidden leading-tight"
+                        className="w-full bg-transparent text-[14px] text-white font-bold outline-none focus:text-emerald-400 placeholder:text-slate-700 resize-none overflow-hidden leading-tight"
                         onInput={(evt) => {
                             const target = evt.target as HTMLTextAreaElement;
                             target.style.height = 'auto';
@@ -122,16 +116,16 @@ const EntryCard: React.FC<{
                 </div>
                 
                 <div className="relative" ref={menuRef}>
-                    <button onClick={() => setShowMenu(!showMenu)} className="p-0.5 text-slate-400 hover:text-white transition-colors">
-                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" /></svg>
+                    <button onClick={() => setShowMenu(!showMenu)} className="p-0.5 text-slate-300 hover:text-white transition-colors">
+                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" /></svg>
                     </button>
                     {showMenu && (
-                        <div className="absolute right-0 top-5 w-32 bg-slate-800 border border-slate-700 rounded-lg shadow-2xl py-1 z-20 animate-in fade-in zoom-in-95 duration-75 origin-top-right">
+                        <div className="absolute right-0 top-6 w-32 bg-slate-800 border border-slate-700 rounded-lg shadow-2xl py-1 z-20 animate-in fade-in zoom-in-95 duration-75 origin-top-right">
                             <button onClick={() => { onTypeToggle(e.id); setShowMenu(false); }} className="w-full text-left px-2 py-1.5 text-[8px] font-bold text-slate-300 hover:bg-slate-700 uppercase tracking-widest flex items-center gap-1.5">
                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" strokeWidth={2}/></svg>
                                 ТИП
                             </button>
-                            <button onClick={() => { if(confirm('Удалить?')) onDelete(e.id); setShowMenu(false); }} className="w-full text-left px-2 py-1.5 text-[8px] font-bold text-red-400 hover:bg-red-950/30 uppercase tracking-widest flex items-center gap-1.5">
+                            <button onClick={() => { onDelete(e.id); setShowMenu(false); }} className="w-full text-left px-2 py-1.5 text-[8px] font-bold text-red-400 hover:bg-red-950/30 uppercase tracking-widest flex items-center gap-1.5">
                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7" strokeWidth={2}/></svg>
                                 УДАЛИТЬ
                             </button>
@@ -142,22 +136,22 @@ const EntryCard: React.FC<{
 
             <div className="grid grid-cols-3 gap-1 bg-slate-950/40 p-1 rounded-lg border border-slate-800/40">
                 <div className="space-y-0">
-                    <span className="block text-[6px] text-slate-400 font-mono uppercase tracking-tighter">Кол-во</span>
+                    <span className="block text-[7px] text-slate-300 font-mono uppercase tracking-tighter font-bold">Кол-во</span>
                     <input 
                         type="number" 
                         value={e.quantity === null ? '' : e.quantity}
                         onChange={(evt) => handleChange({ quantity: evt.target.value === '' ? null : parseFloat(evt.target.value) })}
-                        className="w-full bg-transparent text-[12px] text-white font-bold outline-none tabular-nums"
+                        className="w-full bg-transparent text-[14px] text-white font-bold outline-none tabular-nums"
                         placeholder="0"
                     />
                 </div>
                 <div className="space-y-0">
-                    <span className="block text-[6px] text-slate-400 font-mono uppercase tracking-tighter">Ед.изм</span>
+                    <span className="block text-[7px] text-slate-300 font-mono uppercase tracking-tighter font-bold">Ед.изм</span>
                     <input 
                         list={`units-${e.id}`}
                         value={e.unit || ''}
                         onChange={(evt) => handleChange({ unit: evt.target.value })}
-                        className="w-full bg-transparent text-[12px] text-white font-bold outline-none"
+                        className="w-full bg-transparent text-[14px] text-white font-bold outline-none"
                         placeholder="шт"
                     />
                     <datalist id={`units-${e.id}`}>
@@ -165,12 +159,12 @@ const EntryCard: React.FC<{
                     </datalist>
                 </div>
                 <div className="space-y-0">
-                    <span className="block text-[6px] text-slate-400 font-mono uppercase tracking-tighter">Цена (₽)</span>
+                    <span className="block text-[7px] text-slate-300 font-mono uppercase tracking-tighter font-bold">Цена (₽)</span>
                     <input 
                         type="number" 
                         value={e.price === null ? '' : e.price}
                         onChange={(evt) => handleChange({ price: evt.target.value === '' ? null : parseFloat(evt.target.value) })}
-                        className="w-full bg-transparent text-[12px] text-emerald-500 font-bold outline-none tabular-nums"
+                        className="w-full bg-transparent text-[14px] text-emerald-500 font-bold outline-none tabular-nums"
                         placeholder="0"
                     />
                 </div>
@@ -180,31 +174,25 @@ const EntryCard: React.FC<{
                 <div className="flex-1 flex gap-1 overflow-x-auto no-scrollbar items-center min-h-[32px]">
                     <button 
                         onClick={() => fileInputRef.current?.click()}
-                        className="w-8 h-8 shrink-0 flex items-center justify-center rounded-md bg-slate-950 text-slate-400 hover:text-emerald-500 border border-slate-800 border-dashed transition-all active:scale-90"
+                        className="w-8 h-8 shrink-0 flex items-center justify-center rounded-md bg-slate-950 text-slate-300 hover:text-emerald-500 border border-slate-700 border-dashed transition-all active:scale-90"
                     >
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4" strokeWidth={2}/></svg>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4" strokeWidth={2}/></svg>
                         <input type="file" ref={fileInputRef} onChange={handleAddPhoto} className="hidden" accept="image/*" />
                     </button>
                     {e.images?.map((img, idx) => (
                         <div key={idx} className="relative shrink-0">
                             <img 
                                 src={`data:image/jpeg;base64,${img}`} 
-                                onClick={() => onShowFullscreen(img)}
+                                onClick={() => onShowFullscreen(img, e.id, idx)}
                                 className="w-8 h-8 object-cover rounded-md border border-slate-800 shadow-sm cursor-pointer"
                             />
-                            <button 
-                                onClick={() => removePhoto(idx)}
-                                className="absolute -top-1 -right-1 bg-red-600 text-white rounded-full p-0.5 shadow-lg"
-                            >
-                                <svg className="w-2 h-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" strokeWidth={3}/></svg>
-                            </button>
                         </div>
                     ))}
                 </div>
                 <div className="text-right shrink-0">
-                    <span className="block text-[5px] text-slate-400 font-mono uppercase tracking-widest leading-none">ИТОГО</span>
-                    <div className="text-sm font-bold text-white tabular-nums tracking-tighter leading-none mt-0.5">
-                        {(e.total || 0).toLocaleString()} <span className="text-[7px] opacity-40 font-normal">₽</span>
+                    <span className="block text-[6px] text-slate-300 font-mono uppercase tracking-widest leading-none font-bold">ИТОГО</span>
+                    <div className="text-[15px] font-bold text-white tabular-nums tracking-tighter leading-none mt-0.5">
+                        {(e.total || 0).toLocaleString()} <span className="text-[8px] opacity-40 font-normal">₽</span>
                     </div>
                 </div>
             </div>
@@ -214,7 +202,7 @@ const EntryCard: React.FC<{
 
 const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, activeTab, onDataChange }) => {
   const [entries, setEntries] = useState<Entry[]>([]);
-  const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
+  const [fullscreenData, setFullscreenData] = useState<{ img: string, entryId: string, idx: number } | null>(null);
   const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
 
   const loadEntries = async () => {
@@ -235,9 +223,11 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, activeTab, onDat
   };
 
   const handleEntryDelete = async (id: string) => {
-    await deleteEntry(id);
-    setEntries(prev => prev.filter(item => item.id !== id));
-    onDataChange();
+    if (confirm('Удалить эту позицию?')) {
+        await deleteEntry(id);
+        setEntries(prev => prev.filter(item => item.id !== id));
+        onDataChange();
+    }
   };
 
   const handleEntryTypeToggle = async (id: string) => {
@@ -269,6 +259,18 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, activeTab, onDat
     onDataChange();
   };
 
+  const removePhotoFromEntry = async (entryId: string, idx: number) => {
+      if (!confirm('Удалить это фото?')) return;
+      const entry = entries.find(e => e.id === entryId);
+      if (entry && entry.images) {
+          const updatedImages = [...entry.images];
+          updatedImages.splice(idx, 1);
+          const updated = { ...entry, images: updatedImages };
+          await handleEntryUpdate(updated);
+          setFullscreenData(null);
+      }
+  };
+
   const handleDragStart = (e: React.DragEvent, index: number) => {
     setDraggedIdx(index);
     e.dataTransfer.effectAllowed = 'move';
@@ -292,7 +294,7 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, activeTab, onDat
     
     // Merge back into all entries
     const otherEntries = entries.filter(e => e.type !== activeTab);
-    const finalizedAll = [...otherEntries, ...finalizedTabEntries];
+    const finalizedAll = [...otherEntries, ...finalizedTabEntries].sort((a,b) => (a.order ?? 0) - (b.order ?? 0));
 
     setEntries(finalizedAll);
     setDraggedIdx(null);
@@ -301,6 +303,7 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, activeTab, onDat
     for (const item of finalizedTabEntries) {
       await saveEntry(item);
     }
+    onDataChange();
   };
 
   const sectionTotal = entries
@@ -320,7 +323,7 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, activeTab, onDat
               onUpdate={handleEntryUpdate}
               onDelete={handleEntryDelete}
               onTypeToggle={handleEntryTypeToggle}
-              onShowFullscreen={setFullscreenImage}
+              onShowFullscreen={(img, eid, pidx) => setFullscreenData({ img, entryId: eid, idx: pidx })}
               onDragStart={handleDragStart}
               onDragOver={handleDragOver}
               onDrop={handleDrop}
@@ -340,8 +343,8 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, activeTab, onDat
         style={{ paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom))' }}
       >
           <div className="flex flex-col pl-2">
-              <span className="text-[6px] text-slate-400 font-mono uppercase tracking-[0.2em] mb-0.5">_ИТОГО {activeTab === EntryType.MATERIAL ? 'МАТ' : 'РАБ'}_</span>
-              <div className="text-base font-bold text-white coding-font tracking-tighter tabular-nums leading-none">
+              <span className="text-[6px] text-slate-300 font-mono uppercase tracking-[0.2em] mb-0.5 font-bold">_ИТОГО {activeTab === EntryType.MATERIAL ? 'МАТ' : 'РАБ'}_</span>
+              <div className="text-base font-bold text-white tracking-tighter tabular-nums leading-none">
                   {sectionTotal.toLocaleString()} <span className="text-[9px] text-emerald-500 font-normal">₽</span>
               </div>
           </div>
@@ -355,16 +358,28 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, activeTab, onDat
           </button>
       </div>
 
-      {fullscreenImage && (
-        <div className="fixed inset-0 bg-black/98 z-[100] flex flex-col items-center justify-center p-4" onClick={() => setFullscreenImage(null)}>
-          <button className="absolute top-6 right-6 p-2 bg-white/10 rounded-full text-white backdrop-blur-md">
+      {fullscreenData && (
+        <div className="fixed inset-0 bg-black/98 z-[100] flex flex-col items-center justify-center p-4">
+          <button 
+            onClick={() => setFullscreenData(null)}
+            className="absolute top-6 right-6 p-2 bg-white/10 rounded-full text-white backdrop-blur-md"
+          >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
+          
           <img 
-            src={`data:image/jpeg;base64,${fullscreenImage}`} 
-            className="max-w-full max-h-[85vh] rounded-lg shadow-2xl object-contain animate-in zoom-in-95 duration-150" 
+            src={`data:image/jpeg;base64,${fullscreenData.img}`} 
+            className="max-w-full max-h-[75vh] rounded-lg shadow-2xl object-contain animate-in zoom-in-95 duration-150" 
             alt="Fullscreen" 
           />
+          
+          <button 
+            onClick={() => removePhotoFromEntry(fullscreenData.entryId, fullscreenData.idx)}
+            className="mt-8 px-8 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold uppercase text-[10px] tracking-widest shadow-xl flex items-center gap-2"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7" strokeWidth={2}/></svg>
+            Удалить фото
+          </button>
         </div>
       )}
     </div>

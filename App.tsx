@@ -215,6 +215,13 @@ const App: React.FC = () => {
     reader.readAsText(file);
   };
 
+  const handlePermanentDelete = async (id: string) => {
+    if (window.confirm("Удалить этот объект безвозвратно?")) {
+      await deleteProject(id);
+      await refreshProjects();
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200 flex flex-col max-w-5xl mx-auto shadow-[0_0_100px_rgba(0,0,0,0.5)] border-x border-slate-900">
       <Header 
@@ -251,9 +258,7 @@ const App: React.FC = () => {
                 const p = projects.find(item => item.id === id);
                 if (p) { await saveProject({ ...p, archived: !p.archived }); await refreshProjects(); }
             }}
-            onPermanentDelete={async (id) => {
-                if (window.confirm("Удалить проект?")) { await deleteProject(id); await refreshProjects(); }
-            }}
+            onPermanentDelete={handlePermanentDelete}
             onDuplicate={async (p) => {
                 const newId = generateId();
                 await saveProject({ ...p, id: newId, name: `${p.name} (Копия)`, createdAt: Date.now() });

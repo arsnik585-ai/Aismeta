@@ -75,9 +75,9 @@ const ProjectCard: React.FC<{
             <div className="relative" ref={menuRef}>
               <button 
                 onClick={toggleMenu}
-                className="p-0.5 text-slate-400 hover:text-white transition-colors rounded hover:bg-slate-800"
+                className="p-0.5 text-slate-300 hover:text-white transition-colors rounded hover:bg-slate-800"
               >
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
                 </svg>
               </button>
@@ -118,9 +118,7 @@ const ProjectCard: React.FC<{
                   <button 
                     onClick={(e) => { 
                       e.stopPropagation(); 
-                      if (window.confirm("Удалить проект?")) {
-                        onDelete(p.id);
-                      }
+                      onDelete(p.id);
                       setShowMenu(false);
                     }}
                     className="w-full text-left px-2.5 py-1.5 text-[9px] font-bold text-red-400 hover:bg-red-950/30 flex items-center gap-2 uppercase tracking-widest"
@@ -145,15 +143,15 @@ const ProjectCard: React.FC<{
         <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-800">
            <div className="text-left flex flex-col gap-0.5">
               <div className="leading-none">
-                <span className="inline-block text-[6px] text-slate-400 font-mono tracking-tighter uppercase mr-1">МАТ:</span>
-                <span className="text-[13px] font-bold text-emerald-500 coding-font tabular-nums">
+                <span className="inline-block text-[6px] text-slate-300 font-mono tracking-tighter uppercase mr-1 font-bold">МАТ:</span>
+                <span className="text-[13px] font-bold text-emerald-500 tabular-nums">
                   {mTotal.toLocaleString()} 
                   <span className="text-[8px] font-normal ml-0.5 opacity-40">₽</span>
                 </span>
               </div>
               <div className="leading-none">
-                <span className="inline-block text-[6px] text-slate-400 font-mono tracking-tighter uppercase mr-1">РАБ:</span>
-                <span className="text-[13px] font-bold text-cyan-500 coding-font tabular-nums">
+                <span className="inline-block text-[6px] text-slate-300 font-mono tracking-tighter uppercase mr-1 font-bold">РАБ:</span>
+                <span className="text-[13px] font-bold text-cyan-500 tabular-nums">
                   {lTotal.toLocaleString()} 
                   <span className="text-[8px] font-normal ml-0.5 opacity-40">₽</span>
                 </span>
