@@ -1,4 +1,4 @@
-const CACHE_NAME = 'buildflow-v5';
+const CACHE_NAME = 'buildflow-v6';
 const ASSETS = [
   './',
   'index.html',
@@ -8,7 +8,18 @@ const ASSETS = [
 self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
+    caches.open(CACHE_NAME).then((cache) => {
+      // Пытаемся кешировать, но не ломаем установку если какой-то файл не найден
+      return Promise.allSettled(
+        ASSETS.map(url => cache.add(url))
+      ).then(results => {
+        results.forEach((res, i) => {
+          if (res.status === 'rejected') {
+            console.warn(`[SW] Failed to cache ${ASSETS[i]}:`, res.reason);
+          }
+        });
+      });
+    })
   );
 });
 
@@ -23,11 +34,15 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Для ресурсов приложения используем стратегию Cache First
-  // Внешние запросы (например, к API Google) не кешируются этим SW
+  // Игнорируем API запросы и внешние ресурсы
+  if (event.request.url.includes('/api/')) {
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request).then((response) => {
       return response || fetch(event.request).catch(() => {
+        // Возвращаем главную страницу если оффлайн и это навигация
         if (event.request.mode === 'navigate') {
           return caches.match('./');
         }
