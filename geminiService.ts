@@ -1,79 +1,45 @@
-import { GoogleGenAI, Type } from "@google/genai";
-
-// Эта функция возвращает строку, которая будет заменена на реальный ключ во время сборки в Netlify
-const getApiKey = () => {
-  return process.env.API_KEY;
-};
-
-const SYSTEM_INSTRUCTION = `Вы — эксперт BuildFlow AI. 
-Ваша задача: извлекать строительные материалы и работы из чеков или голоса.
-Верни строго массив объектов JSON.`;
-
-const ITEM_SCHEMA = {
-  type: Type.OBJECT,
-  properties: {
-    name: { type: Type.STRING },
-    type: { type: Type.STRING, enum: ['MATERIAL', 'LABOR'] },
-    quantity: { type: Type.NUMBER, nullable: true },
-    unit: { type: Type.STRING, nullable: true },
-    price: { type: Type.NUMBER, nullable: true },
-    total: { type: Type.NUMBER, nullable: true },
-    vendor: { type: Type.STRING, nullable: true },
-  },
-  required: ['name', 'type'],
-};
+/**
+ * Фронтенд-сервис BuildFlow AI.
+ * Теперь все запросы проходят через безопасный прокси /api/process (Cloudflare Worker),
+ * что скрывает API_KEY от конечного пользователя.
+ */
 
 export const processImage = async (base64Image: string) => {
-  const apiKey = getApiKey();
-  const ai = new GoogleGenAI({ apiKey });
-  
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: {
-        parts: [
-          { inlineData: { mimeType: 'image/jpeg', data: base64Image } },
-          { text: "Извлеки все товары и цены в JSON массив." }
-        ]
-      },
-      config: {
-        systemInstruction: SYSTEM_INSTRUCTION,
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.ARRAY,
-          items: ITEM_SCHEMA
-        },
-      }
+    const response = await fetch('/api/process', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'image', payload: base64Image })
     });
-    return JSON.parse(response.text || "[]");
+
+    if (!response.ok) {
+      const errData = await response.json();
+      throw new Error(errData.error || 'Ошибка сервера при анализе изображения');
+    }
+
+    return await response.json();
   } catch (err) {
-    console.error("Gemini Image Error:", err);
+    console.error("Frontend Process Image Error:", err);
     throw err;
   }
 };
 
 export const processVoice = async (transcript: string) => {
-  const apiKey = getApiKey();
-  const ai = new GoogleGenAI({ apiKey });
-  
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: {
-        parts: [{ text: `Разбери эту строительную заметку: ${transcript}` }]
-      },
-      config: {
-        systemInstruction: SYSTEM_INSTRUCTION,
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.ARRAY,
-          items: ITEM_SCHEMA
-        },
-      }
+    const response = await fetch('/api/process', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'voice', payload: transcript })
     });
-    return JSON.parse(response.text || "[]");
+
+    if (!response.ok) {
+      const errData = await response.json();
+      throw new Error(errData.error || 'Ошибка сервера при анализе голоса');
+    }
+
+    return await response.json();
   } catch (err) {
-    console.error("Gemini Voice Error:", err);
+    console.error("Frontend Process Voice Error:", err);
     throw err;
   }
 };
