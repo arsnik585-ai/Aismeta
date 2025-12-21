@@ -21,6 +21,7 @@ interface DashboardProps {
 const ProjectCard: React.FC<{
   p: Project;
   index: number;
+  totalCount: number;
   mTotal: number;
   lTotal: number;
   onSelect: (p: Project) => void;
@@ -30,12 +31,9 @@ const ProjectCard: React.FC<{
   onShareClick: (p: Project) => void;
   onDuplicate: (p: Project) => void;
   onQuickAction: (p: Project, action: string) => void;
+  onMove: (index: number, direction: 'up' | 'down') => void;
   isArchivedView: boolean;
-  onDragStart: (e: React.DragEvent, index: number) => void;
-  onDragOver: (e: React.DragEvent, index: number) => void;
-  onDrop: (e: React.DragEvent, index: number) => void;
-  isDragged?: boolean;
-}> = ({ p, index, mTotal, lTotal, onSelect, onArchiveToggle, onDelete, onRenameStart, onShareClick, onDuplicate, onQuickAction, isArchivedView, onDragStart, onDragOver, onDrop, isDragged }) => {
+}> = ({ p, index, totalCount, mTotal, lTotal, onSelect, onArchiveToggle, onDelete, onRenameStart, onShareClick, onDuplicate, onQuickAction, onMove, isArchivedView }) => {
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -55,85 +53,100 @@ const ProjectCard: React.FC<{
   };
 
   return (
-    <div 
-      className={`relative rounded-xl bg-slate-950 select-none cursor-move transition-all duration-200 ${isDragged ? 'opacity-20 scale-95' : 'opacity-100'}`}
-      draggable
-      onDragStart={(e) => onDragStart(e, index)}
-      onDragOver={(e) => onDragOver(e, index)}
-      onDrop={(e) => onDrop(e, index)}
-    >
+    <div className={`relative rounded-xl bg-slate-950 transition-all duration-200 ${showMenu ? 'z-50' : 'z-10'}`}>
       <div 
         onClick={() => onSelect(p)}
-        className={`bg-slate-900 border border-slate-800 p-2.5 rounded-xl transition-all cursor-pointer relative z-10 shadow-lg active:bg-slate-800 h-full flex flex-col justify-between ${isArchivedView ? 'opacity-90' : ''}`}
+        className={`bg-slate-900 border border-slate-800 p-2.5 rounded-xl transition-all cursor-pointer relative shadow-lg active:bg-slate-800 h-full flex flex-col justify-between ${isArchivedView ? 'opacity-90' : ''}`}
       >
         <div>
           <div className="flex justify-between items-start mb-1">
-            <span className="text-[8px] text-emerald-400 font-mono bg-emerald-950 border border-emerald-900/50 px-1.5 py-0.5 rounded-full">
+            <span className="text-[8px] text-emerald-400 font-mono bg-emerald-950 border border-emerald-900/50 px-1.5 py-0.5 rounded-full font-bold">
               {new Date(p.createdAt).toLocaleString('ru', { day: '2-digit', month: '2-digit', year: '2-digit' })}
             </span>
             
-            <div className="relative" ref={menuRef}>
-              <button 
-                onClick={toggleMenu}
-                className="p-0.5 text-slate-300 hover:text-white transition-colors rounded hover:bg-slate-800"
-              >
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
-                </svg>
-              </button>
-
-              {showMenu && (
-                <div className="absolute right-0 mt-1 w-36 bg-slate-800 border border-slate-700 rounded-lg shadow-2xl py-1 z-50 animate-in fade-in zoom-in-95 duration-100 origin-top-right">
+            <div className="flex items-center gap-1">
+              {!isArchivedView && (
+                <div className="flex items-center gap-0.5 mr-1 bg-slate-950/50 p-0.5 rounded-md border border-slate-800">
                   <button 
-                    onClick={(e) => { e.stopPropagation(); onRenameStart(p); setShowMenu(false); }}
-                    className="w-full text-left px-2.5 py-1.5 text-[9px] font-bold text-slate-300 hover:bg-slate-700 flex items-center gap-2 uppercase tracking-widest"
+                    disabled={index === 0}
+                    onClick={(e) => { e.stopPropagation(); onMove(index, 'up'); }}
+                    className={`p-1 rounded transition-colors ${index === 0 ? 'text-slate-700' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
                   >
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" strokeWidth={2}/></svg>
-                    ПРАВКА
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 15l7-7 7 7" /></svg>
                   </button>
                   <button 
-                    onClick={(e) => { e.stopPropagation(); onDuplicate(p); setShowMenu(false); }}
-                    className="w-full text-left px-2.5 py-1.5 text-[9px] font-bold text-slate-300 hover:bg-slate-700 flex items-center gap-2 uppercase tracking-widest"
+                    disabled={index === totalCount - 1}
+                    onClick={(e) => { e.stopPropagation(); onMove(index, 'down'); }}
+                    className={`p-1 rounded transition-colors ${index === totalCount - 1 ? 'text-slate-700' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
                   >
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" /></svg>
-                    КОПИЯ
-                  </button>
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); onArchiveToggle(p.id); setShowMenu(false); }}
-                    className="w-full text-left px-2.5 py-1.5 text-[9px] font-bold text-amber-400 hover:bg-amber-950/30 flex items-center gap-2 uppercase tracking-widest"
-                  >
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
-                    {isArchivedView ? 'ВЕРНУТЬ' : 'АРХИВ'}
-                  </button>
-                  {!isArchivedView && (
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); onShareClick(p); setShowMenu(false); }}
-                      className="w-full text-left px-2.5 py-1.5 text-[9px] font-bold text-emerald-400 hover:bg-emerald-950/30 flex items-center gap-2 uppercase tracking-widest"
-                    >
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
-                      ОТЧЕТ
-                    </button>
-                  )}
-                  <div className="h-px bg-slate-700 my-0.5 mx-1.5"></div>
-                  <button 
-                    onClick={(e) => { 
-                      e.stopPropagation(); 
-                      onDelete(p.id);
-                      setShowMenu(false);
-                    }}
-                    className="w-full text-left px-2.5 py-1.5 text-[9px] font-bold text-red-400 hover:bg-red-950/30 flex items-center gap-2 uppercase tracking-widest"
-                  >
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7" /></svg>
-                    УДАЛИТЬ
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" /></svg>
                   </button>
                 </div>
               )}
+
+              <div className="relative" ref={menuRef}>
+                <button 
+                  onClick={toggleMenu}
+                  className="p-1 text-slate-300 hover:text-white transition-colors rounded hover:bg-slate-800"
+                >
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
+                  </svg>
+                </button>
+
+                {showMenu && (
+                  <div className="absolute right-0 mt-1 w-36 bg-slate-800 border border-slate-700 rounded-lg shadow-2xl py-1 z-50 animate-in fade-in zoom-in-95 duration-100 origin-top-right">
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); onRenameStart(p); setShowMenu(false); }}
+                      className="w-full text-left px-2.5 py-1.5 text-[9px] font-bold text-slate-300 hover:bg-slate-700 flex items-center gap-2 uppercase tracking-widest"
+                    >
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" strokeWidth={2}/></svg>
+                      ПРАВКА
+                    </button>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); onDuplicate(p); setShowMenu(false); }}
+                      className="w-full text-left px-2.5 py-1.5 text-[9px] font-bold text-slate-300 hover:bg-slate-700 flex items-center gap-2 uppercase tracking-widest"
+                    >
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" /></svg>
+                      КОПИЯ
+                    </button>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); onArchiveToggle(p.id); setShowMenu(false); }}
+                      className="w-full text-left px-2.5 py-1.5 text-[9px] font-bold text-amber-400 hover:bg-amber-950/30 flex items-center gap-2 uppercase tracking-widest"
+                    >
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
+                      {isArchivedView ? 'ВЕРНУТЬ' : 'АРХИВ'}
+                    </button>
+                    {!isArchivedView && (
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); onShareClick(p); setShowMenu(false); }}
+                        className="w-full text-left px-2.5 py-1.5 text-[9px] font-bold text-emerald-400 hover:bg-emerald-950/30 flex items-center gap-2 uppercase tracking-widest"
+                      >
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+                        ОТЧЕТ
+                      </button>
+                    )}
+                    <div className="h-px bg-slate-700 my-0.5 mx-1.5"></div>
+                    <button 
+                      onClick={(e) => { 
+                        e.stopPropagation(); 
+                        onDelete(p.id);
+                        setShowMenu(false);
+                      }}
+                      className="w-full text-left px-2.5 py-1.5 text-[9px] font-bold text-red-400 hover:bg-red-950/30 flex items-center gap-2 uppercase tracking-widest"
+                    >
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                      УДАЛИТЬ
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
           <div className="mb-1">
-            <h3 className="text-lg font-bold text-white truncate coding-font tracking-tight leading-none">{p.name}</h3>
-            <p className="text-[9px] text-slate-500 mt-0.5 uppercase tracking-wide font-mono flex items-center gap-1">
+            <h3 className="text-lg font-bold text-white truncate tracking-tight leading-none">{p.name}</h3>
+            <p className="text-[9px] text-slate-300 mt-0.5 uppercase tracking-wide font-mono flex items-center gap-1 font-bold">
               <svg className="w-2.5 h-2.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" strokeWidth={2}/></svg>
               {p.address || 'ЛОКАЦИЯ?'}
             </p>
@@ -144,14 +157,14 @@ const ProjectCard: React.FC<{
            <div className="text-left flex flex-col gap-0.5">
               <div className="leading-none">
                 <span className="inline-block text-[6px] text-slate-300 font-mono tracking-tighter uppercase mr-1 font-bold">МАТ:</span>
-                <span className="text-[13px] font-bold text-emerald-500 tabular-nums">
+                <span className="text-[14px] font-bold text-emerald-500 tabular-nums">
                   {mTotal.toLocaleString()} 
                   <span className="text-[8px] font-normal ml-0.5 opacity-40">₽</span>
                 </span>
               </div>
               <div className="leading-none">
                 <span className="inline-block text-[6px] text-slate-300 font-mono tracking-tighter uppercase mr-1 font-bold">РАБ:</span>
-                <span className="text-[13px] font-bold text-cyan-500 tabular-nums">
+                <span className="text-[14px] font-bold text-cyan-500 tabular-nums">
                   {lTotal.toLocaleString()} 
                   <span className="text-[8px] font-normal ml-0.5 opacity-40">₽</span>
                 </span>
@@ -161,12 +174,12 @@ const ProjectCard: React.FC<{
            {!isArchivedView && (
              <div className="flex gap-1" onClick={e => e.stopPropagation()}>
                 <button onClick={() => onQuickAction(p, 'material')} className="p-1.5 bg-slate-950 rounded text-emerald-500 border border-slate-800 active:bg-slate-800 transition-all shadow-sm">
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                   </svg>
                 </button>
                 <button onClick={() => onQuickAction(p, 'labor')} className="p-1.5 bg-slate-950 rounded text-cyan-500 border border-slate-800 active:bg-slate-800 transition-all shadow-sm">
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z" />
                   </svg>
                 </button>
@@ -200,37 +213,23 @@ const Dashboard: React.FC<DashboardProps> = ({
   const [editNameValue, setEditNameValue] = useState('');
   const [editAddressValue, setEditAddressValue] = useState('');
   const [shareProjectModal, setShareProjectModal] = useState<Project | null>(null);
-  const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
 
   useEffect(() => {
     setProjects(initialProjects);
   }, [initialProjects]);
 
-  const handleDragStart = (e: React.DragEvent, index: number) => {
-    setDraggedIdx(index);
-    e.dataTransfer.effectAllowed = 'move';
-    // Visual placeholder for mobile browsers
-    const dragImg = new Image();
-    dragImg.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-    e.dataTransfer.setDragImage(dragImg, 0, 0);
-  };
+  // handleMoveProject manages ordering internally within Dashboard component
+  const handleMoveProject = async (index: number, direction: 'up' | 'down') => {
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= projects.length) return;
 
-  const handleDragOver = (e: React.DragEvent, index: number) => {
-    e.preventDefault();
-  };
+    const newProjects = [...projects];
+    // Swap items
+    [newProjects[index], newProjects[targetIndex]] = [newProjects[targetIndex], newProjects[index]];
 
-  const handleDrop = async (e: React.DragEvent, index: number) => {
-    e.preventDefault();
-    if (draggedIdx === null || draggedIdx === index) return;
-
-    const updatedProjects = [...projects];
-    const [movedItem] = updatedProjects.splice(draggedIdx, 1);
-    updatedProjects.splice(index, 0, movedItem);
-
-    // Update orders
-    const finalized = updatedProjects.map((p, i) => ({ ...p, order: i }));
+    // Re-assign orders
+    const finalized = newProjects.map((p, i) => ({ ...p, order: i }));
     setProjects(finalized);
-    setDraggedIdx(null);
 
     // Save orders to DB
     for (const p of finalized) {
@@ -261,7 +260,7 @@ const Dashboard: React.FC<DashboardProps> = ({
           <input 
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 focus:border-emerald-500 outline-none text-white text-sm cursor-text"
+            className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 focus:border-emerald-500 outline-none text-white text-sm"
             placeholder="Название"
             required
             autoFocus
@@ -269,7 +268,7 @@ const Dashboard: React.FC<DashboardProps> = ({
           <input 
             value={address}
             onChange={(e) => setAddress(e.target.value)}
-            className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 focus:border-emerald-500 outline-none text-white text-sm cursor-text"
+            className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 focus:border-emerald-500 outline-none text-white text-sm"
             placeholder="Адрес объекта"
           />
           <button type="submit" className="w-full bg-emerald-600 py-2.5 rounded-lg font-bold uppercase text-[10px] tracking-widest hover:bg-emerald-500 transition-colors shadow-xl">
@@ -285,12 +284,12 @@ const Dashboard: React.FC<DashboardProps> = ({
                 <input 
                   value={editNameValue} 
                   onChange={e => setEditNameValue(e.target.value)} 
-                  className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 text-white coding-font outline-none text-xs cursor-text"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 text-white coding-font outline-none text-xs"
                 />
                 <input 
                   value={editAddressValue} 
                   onChange={e => setEditAddressValue(e.target.value)} 
-                  className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 text-white text-[10px] coding-font outline-none cursor-text"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 text-white text-[10px] coding-font outline-none"
                 />
                 <div className="flex gap-2 pt-1">
                     <button onClick={() => { onRename(editingId, editNameValue, editAddressValue); setEditingId(null); }} className="flex-1 bg-emerald-600 py-2.5 rounded-lg font-bold text-white uppercase text-[9px] active:bg-emerald-500">Сохранить</button>
@@ -346,6 +345,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             key={p.id}
             p={p}
             index={idx}
+            totalCount={projects.length}
             mTotal={materialTotals[p.id] || 0}
             lTotal={laborTotals[p.id] || 0}
             isArchivedView={viewingArchive}
@@ -356,10 +356,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             onRenameStart={(project) => { setEditingId(project.id); setEditNameValue(project.name); setEditAddressValue(project.address); }}
             onShareClick={setShareProjectModal}
             onQuickAction={onQuickAction}
-            onDragStart={handleDragStart}
-            onDragOver={handleDragOver}
-            onDrop={handleDrop}
-            isDragged={draggedIdx === idx}
+            onMove={handleMoveProject}
           />
         )) : (
           <div className="col-span-full py-12 text-center opacity-20 flex flex-col items-center gap-3 border border-dashed border-slate-800 rounded-xl">
