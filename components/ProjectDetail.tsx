@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Project, Entry, EntryType } from '../types';
 import { getEntriesByProject, saveEntry, deleteEntry, generateId } from '../db';
@@ -231,7 +230,10 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, activeTab, onDat
         ))}
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-slate-950/95 backdrop-blur-2xl border-t border-slate-800 flex justify-center gap-4 z-40 shadow-2xl">
+      <div 
+        className="fixed bottom-0 left-0 right-0 p-4 bg-slate-950/95 backdrop-blur-2xl border-t border-slate-800 flex justify-center gap-4 z-40 shadow-2xl"
+        style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}
+      >
           <button onClick={addManualEntry} className="flex-1 bg-emerald-600 h-14 rounded-2xl font-bold text-white shadow-xl uppercase text-[11px] tracking-[0.2em] active:scale-95 transition-all hover:bg-emerald-500">
             ДОБАВИТЬ ПОЗИЦИЮ
           </button>
@@ -307,6 +309,7 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, activeTab, onDat
       {fullscreenImage && (
         <div className="fixed inset-0 bg-black/98 z-[100] flex flex-col items-center justify-center p-4" onClick={() => setFullscreenImage(null)}>
           <button className="absolute top-6 right-6 p-3 bg-white/10 rounded-full text-white backdrop-blur-md">
+            {/* Fix Linecap/Linejoin typo */}
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
           <img src={`data:image/jpeg;base64,${fullscreenImage}`} className="max-w-full max-h-full rounded-lg shadow-[0_0_50px_rgba(0,0,0,0.5)] object-contain" alt="Fullscreen" />

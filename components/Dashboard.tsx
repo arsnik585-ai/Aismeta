@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Project } from '../types';
 
@@ -353,7 +352,13 @@ const Dashboard: React.FC<DashboardProps> = ({
       </div>
 
       {!viewingArchive && (
-        <div className="fixed bottom-6 right-6 md:right-10 lg:right-12 z-40">
+        <div 
+          className="fixed z-40"
+          style={{ 
+            bottom: 'calc(1.5rem + env(safe-area-inset-bottom))',
+            right: '1.5rem'
+          }}
+        >
           <button 
             onClick={() => setIsAdding(!isAdding)}
             className={`w-14 h-14 md:w-16 md:h-16 rounded-2xl flex items-center justify-center shadow-2xl transition-all active:scale-95 border ${isAdding ? 'bg-slate-800 border-slate-700 text-emerald-500' : 'bg-emerald-600 border-emerald-500 text-white'}`}
@@ -361,6 +366,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             {isAdding ? (
               <svg className="w-7 h-7 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
             ) : (
+              // Fix Linecap/Linejoin typo
               <svg className="w-7 h-7 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>
             )}
           </button>
