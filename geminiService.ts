@@ -1,36 +1,40 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
 /**
- * BuildFlow AI Core Service (v2.0)
- * Полностью переписанная логика ассистента для глубокого анализа строительных данных.
+ * BuildFlow AI Core Service (v3.0 - Final)
+ * Полностью переработанная логика ассистента.
  */
 
+const API_KEY = "AIzaSyAJxr6Wob4etFjLsjTzSTXn9v52mgqa9iQ";
 const MODEL_NAME = 'gemini-3-flash-preview';
 
-const SYSTEM_INSTRUCTION = `Вы — экспертный ИИ-ассистент BuildFlow, специализирующийся на аудите строительных смет и распознавании чеков.
-ВАША ЗАДАЧА: Преобразовать неструктурированный ввод (фото чека или текст голосовой заметки) в структурированный массив JSON.
+const SYSTEM_INSTRUCTION = `Вы — ведущий инженер-сметчик системы BuildFlow AI. 
+Ваша специализация: мгновенный аудит строительных расходов.
+
+ЗАДАЧА: Превратить хаотичный ввод (фото чека или текст аудио-заметки) в чистый структурированный JSON-список.
 
 ПРАВИЛА ОБРАБОТКИ:
-1. Каждая позиция должна быть классифицирована как MATERIAL (товар, расходник) или LABOR (услуга, работа, аренда).
-2. Очищайте названия от лишнего шума (артикулы, сокращения касс), но сохраняйте суть (например, "Клей плит. Кнауф 25кг").
-3. Если количество или цена не указаны явно, делайте разумное предположение (по умолчанию количество 1).
-4. Валюта всегда RUB (₽).
-5. Если вводе нет полезных данных, верните пустой массив [].
+1. Классификация:
+   - MATERIAL: Физические товары, стройматериалы, расходники, инструменты.
+   - LABOR: Услуги мастеров, доставка, подъем на этаж, аренда техники, вывоз мусора.
+2. Очистка данных: Убирайте из названий артикулы и технический мусор. Пишите понятно (например, вместо "Клей 777-ХХ 25кг" пишите "Клей плиточный 25кг").
+3. Цены: Если цена за единицу не указана, вычислите её из общего итога. Все суммы в RUB (₽).
+4. Ошибки: Если данных нет или они нечитаемы, возвращайте пустой массив [].
 
-ВЕРНИТЕ ТОЛЬКО ЧИСТЫЙ JSON МАССИВ.`;
+ВЕРНИТЕ ТОЛЬКО JSON МАССИВ. БЕЗ ТЕКСТА ДО И ПОСЛЕ.`;
 
 const RESPONSE_SCHEMA = {
   type: Type.ARRAY,
   items: {
     type: Type.OBJECT,
     properties: {
-      name: { type: Type.STRING, description: "Наименование материала или работы" },
-      type: { type: Type.STRING, enum: ['MATERIAL', 'LABOR'], description: "Тип позиции" },
-      quantity: { type: Type.NUMBER, description: "Количественный показатель" },
-      unit: { type: Type.STRING, description: "Единица измерения (шт, м2, мп, кг, меш и т.д.)" },
-      price: { type: Type.NUMBER, description: "Цена за единицу" },
-      total: { type: Type.NUMBER, description: "Общая сумма по позиции" },
-      vendor: { type: Type.STRING, description: "Место приобретения или исполнитель" },
+      name: { type: Type.STRING, description: "Название товара или услуги" },
+      type: { type: Type.STRING, enum: ['MATERIAL', 'LABOR'], description: "Тип: материал или работа" },
+      quantity: { type: Type.NUMBER, description: "Количество" },
+      unit: { type: Type.STRING, description: "Единица измерения (шт, м2, кг...)" },
+      price: { type: Type.NUMBER, description: "Цена за 1 единицу" },
+      total: { type: Type.NUMBER, description: "Итоговая сумма по позиции" },
+      vendor: { type: Type.STRING, description: "Магазин, рынок или исполнитель" },
     },
     required: ['name', 'type', 'quantity', 'price', 'total'],
   },
@@ -38,19 +42,19 @@ const RESPONSE_SCHEMA = {
 
 export const BuildFlowAssistant = {
   /**
-   * Обработка изображений (OCR + Анализ)
+   * Анализ чеков и накладных через камеру
    */
   async analyzeReceipt(base64Image: string) {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const ai = new GoogleGenAI({ apiKey: API_KEY });
     
     try {
-      const response = await ai.models.generateContent({
+      const result = await ai.models.generateContent({
         model: MODEL_NAME,
         contents: [{
           role: 'user',
           parts: [
             { inlineData: { mimeType: 'image/jpeg', data: base64Image } },
-            { text: "Извлеки все позиции из этого строительного чека/накладной. Сформируй детальный список." }
+            { text: "Просканируй этот строительный документ. Извлеки все материалы и услуги." }
           ]
         }],
         config: {
@@ -60,25 +64,25 @@ export const BuildFlowAssistant = {
         }
       });
 
-      return this._parseResponse(response.text);
+      return this._safeParse(result.text);
     } catch (error: any) {
-      console.error("[Assistant_Receipt_Error]", error);
-      throw new Error(this._mapError(error));
+      console.error("[AI_RECEIPT_ERROR]", error);
+      throw new Error(this._handleError(error));
     }
   },
 
   /**
-   * Обработка текста (Голосовые заметки)
+   * Разбор голосовых команд и заметок прораба
    */
   async analyzeVoiceNote(transcript: string) {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const ai = new GoogleGenAI({ apiKey: API_KEY });
 
     try {
-      const response = await ai.models.generateContent({
+      const result = await ai.models.generateContent({
         model: MODEL_NAME,
         contents: [{
           role: 'user',
-          parts: [{ text: `Разбери голосовую заметку прораба: "${transcript}". Выдели материалы и работы.` }]
+          parts: [{ text: `Разбери диктовку по закупкам/работам: "${transcript}"` }]
         }],
         config: {
           systemInstruction: SYSTEM_INSTRUCTION,
@@ -87,27 +91,25 @@ export const BuildFlowAssistant = {
         }
       });
 
-      return this._parseResponse(response.text);
+      return this._safeParse(result.text);
     } catch (error: any) {
-      console.error("[Assistant_Voice_Error]", error);
-      throw new Error(this._mapError(error));
+      console.error("[AI_VOICE_ERROR]", error);
+      throw new Error(this._handleError(error));
     }
   },
 
-  _parseResponse(text: string | undefined) {
+  _safeParse(text: string | undefined) {
     if (!text) return [];
     try {
-      const cleanJson = text.trim();
-      return JSON.parse(cleanJson);
+      return JSON.parse(text.trim());
     } catch (e) {
-      console.error("[JSON_Parse_Error]", text);
+      console.error("[AI_JSON_PARSE_FAILED]", text);
       return [];
     }
   },
 
-  _mapError(error: any) {
-    if (error.message?.includes("API_KEY")) return "Ошибка авторизации ассистента";
-    if (error.message?.includes("safety")) return "Контент заблокирован фильтрами безопасности";
-    return error.message || "Сбой ассистента при обработке";
+  _handleError(error: any) {
+    if (error.message?.includes("API_KEY")) return "Проблема с ключом доступа ассистента";
+    return "Ассистент временно недоступен";
   }
 };
