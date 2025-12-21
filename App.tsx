@@ -60,6 +60,8 @@ const App: React.FC = () => {
     if (queue.length === 0) return;
 
     setIsSyncing(true);
+    console.log("[SYNC_LOOP] Starting sync for", queue.length, "items");
+
     try {
       for (const item of queue) {
         let errorToRecord: string | null = null;
@@ -73,16 +75,17 @@ const App: React.FC = () => {
             aiResult = await processVoice(item.payload);
           }
           resultItems = Array.isArray(aiResult) ? aiResult : (aiResult.items || []);
-          if (resultItems.length === 0) errorToRecord = "ИИ не нашел позиций.";
+          if (resultItems.length === 0) errorToRecord = "ИИ не нашел позиций в ответе.";
         } catch (e: any) {
-          console.error("AI sync error:", e);
-          errorToRecord = e.message || "Ошибка ИИ";
+          console.error("[SYNC_LOOP_ERROR]", e);
+          errorToRecord = e.message || "Неизвестная ошибка";
         }
 
+        const db = await initDB();
+        const tx = db.transaction('entries', 'readwrite');
+        const store = tx.objectStore('entries');
+
         if (errorToRecord) {
-          const db = await initDB();
-          const tx = db.transaction('entries', 'readwrite');
-          const store = tx.objectStore('entries');
           const entry = await new Promise<Entry | undefined>((resolve) => {
             const req = store.get(item.entryId);
             req.onsuccess = () => resolve(req.result);
@@ -97,7 +100,12 @@ const App: React.FC = () => {
             });
           }
         } else {
-          await deleteEntry(item.entryId);
+          // Success
+          await new Promise((resolve) => {
+            const req = store.delete(item.entryId);
+            req.onsuccess = resolve;
+          });
+          
           for (const entryData of resultItems) {
             const newEntry: Entry = {
               id: generateId(),
@@ -114,13 +122,16 @@ const App: React.FC = () => {
               vendor: entryData.vendor || null,
               images: item.type === 'PHOTO' ? [item.payload] : []
             };
-            await saveEntry(newEntry);
+            await new Promise((resolve) => {
+                const req = store.put(newEntry);
+                req.onsuccess = resolve;
+            });
           }
         }
         await removeFromSyncQueue(item.id);
       }
-    } catch (criticalErr) {
-      console.error("Critical sync loop error:", criticalErr);
+    } catch (criticalErr: any) {
+      console.error("[SYNC_LOOP_CRITICAL]", criticalErr);
     } finally {
       setIsSyncing(false);
       await refreshProjects();

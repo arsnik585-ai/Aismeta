@@ -7,12 +7,15 @@ interface Env {
 export const onRequestPost = async (context: { request: Request; env: Env }) => {
   const { request, env } = context;
 
-  // Ключ берется из переменных окружения Cloudflare Pages
-  if (!env.API_KEY) {
+  console.log("[WORKER_DIAGNOSTIC] Request received");
+
+  // Проверка ключа в env
+  if (!env.API_KEY || env.API_KEY === 'undefined' || env.API_KEY === '') {
+    console.error("[WORKER_ERROR] API_KEY is missing in env variables");
     return new Response(
       JSON.stringify({ 
-        error: "API_KEY_MISSING", 
-        message: "Критическая ошибка: API_KEY не настроен в панели управления Cloudflare (Settings -> Variables)." 
+        error: "WORKER_CONFIG_ERROR", 
+        message: "API_KEY не найден в Cloudflare Env. Проверьте Settings -> Variables в панели Cloudflare." 
       }), 
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
@@ -22,14 +25,27 @@ export const onRequestPost = async (context: { request: Request; env: Env }) => 
     const body = await request.json() as { action: string; payload: string };
     const { action, payload } = body;
 
+    console.log(`[WORKER_DIAGNOSTIC] Action: ${action}, Payload size: ${payload?.length || 0}`);
+
     if (!payload) {
       return new Response(
-        JSON.stringify({ error: "EMPTY_PAYLOAD", message: "Данные не получены." }), 
+        JSON.stringify({ error: "EMPTY_PAYLOAD", message: "Payload is empty" }), 
         { status: 400, headers: { "Content-Type": "application/json" } }
       );
     }
 
-    const ai = new GoogleGenAI({ apiKey: env.API_KEY });
+    // Инициализация ИИ с проверкой
+    let ai;
+    try {
+      ai = new GoogleGenAI({ apiKey: env.API_KEY });
+      console.log("[WORKER_DIAGNOSTIC] GoogleGenAI instance created successfully");
+    } catch (aiInitErr: any) {
+      console.error("[WORKER_ERROR] Failed to initialize GoogleGenAI:", aiInitErr.message);
+      return new Response(
+        JSON.stringify({ error: "AI_INIT_FAIL", message: `Ошибка инициализации SDK: ${aiInitErr.message}` }), 
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
     
     const SYSTEM_INSTRUCTION = `Вы — ведущий инженер BuildFlow AI. 
     Ваша задача: извлекать строительные материалы (MATERIAL) и работы (LABOR) из чеков или голосовых заметок.
@@ -63,6 +79,8 @@ export const onRequestPost = async (context: { request: Request; env: Env }) => 
       promptText = `Разбери строительную заметку: "${payload}". Сформируй JSON список материалов и работ.`;
     }
 
+    console.log("[WORKER_DIAGNOSTIC] Calling ai.models.generateContent...");
+
     const result = await ai.models.generateContent({
       model: modelName,
       contents: action === 'image' 
@@ -76,21 +94,20 @@ export const onRequestPost = async (context: { request: Request; env: Env }) => 
     });
 
     const outputText = result.text;
-    if (!outputText) throw new Error("ИИ вернул пустой ответ.");
+    console.log("[WORKER_DIAGNOSTIC] AI response received");
 
-    // Проверка структуры перед отправкой
-    JSON.parse(outputText);
+    if (!outputText) throw new Error("Empty text in AI response");
 
     return new Response(outputText, {
       headers: { "Content-Type": "application/json" }
     });
 
   } catch (err: any) {
-    console.error("Worker Error:", err);
+    console.error("[WORKER_EXCEPTION]", err);
     return new Response(
       JSON.stringify({ 
-        error: "AI_ERROR", 
-        message: "Ошибка анализа: " + (err.message || "Попробуйте еще раз.")
+        error: "AI_EXECUTION_ERROR", 
+        message: err.message || "Unknown internal error"
       }), 
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
