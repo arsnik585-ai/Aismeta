@@ -10,7 +10,7 @@ export const onRequestPost = async (context: { request: Request; env: Env }) => 
   if (!env.API_KEY) {
     return new Response(
       JSON.stringify({ 
-        error: "API_KEY не настроен. Добавьте его в Settings -> Variables and Secrets в панели Cloudflare Pages." 
+        error: "API_KEY не настроен в переменных окружения Cloudflare." 
       }), 
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
@@ -23,42 +23,42 @@ export const onRequestPost = async (context: { request: Request; env: Env }) => 
     
     const SYSTEM_INSTRUCTION = `Вы — эксперт BuildFlow AI. 
     Ваша задача: извлекать строительные материалы и работы из чеков (фото) или голоса.
-    Верни строго массив объектов JSON. Каждое поле должно быть заполнено на основе предоставленного контекста.
-    Поле 'type' может принимать только значения 'MATERIAL' или 'LABOR'.`;
+    Обязательно верни массив объектов JSON. Каждое поле должно быть заполнено на основе контекста.
+    Если количество или цена не указаны, верни 0 или null (но не пропускай поля).
+    Тип (type) должен быть строго 'MATERIAL' или 'LABOR'.`;
 
     const ITEM_SCHEMA = {
       type: Type.OBJECT,
       properties: {
-        name: { type: Type.STRING, description: "Название позиции" },
-        type: { type: Type.STRING, enum: ['MATERIAL', 'LABOR'], description: "Материал или работа" },
-        quantity: { type: Type.NUMBER, nullable: true },
-        unit: { type: Type.STRING, nullable: true },
-        price: { type: Type.NUMBER, nullable: true },
-        total: { type: Type.NUMBER, nullable: true },
-        vendor: { type: Type.STRING, nullable: true },
+        name: { type: Type.STRING, description: "Наименование товара или услуги" },
+        type: { type: Type.STRING, enum: ['MATERIAL', 'LABOR'], description: "Тип: MATERIAL (материал) или LABOR (работа/услуга)" },
+        quantity: { type: Type.NUMBER, description: "Количество" },
+        unit: { type: Type.STRING, description: "Единица измерения (шт, м2, упак и т.д.)" },
+        price: { type: Type.NUMBER, description: "Цена за единицу" },
+        total: { type: Type.NUMBER, description: "Итоговая сумма по позиции" },
+        vendor: { type: Type.STRING, description: "Продавец или исполнитель" },
       },
       required: ['name', 'type'],
+      propertyOrdering: ["name", "type", "quantity", "unit", "price", "total", "vendor"]
     };
 
     const modelName = 'gemini-3-flash-preview';
-    let contents;
+    let parts: any[] = [];
 
     if (action === 'image') {
-      contents = {
-        parts: [
-          { inlineData: { mimeType: 'image/jpeg', data: payload } },
-          { text: "Найди все товары и услуги в этом чеке и выведи их списком в формате JSON." }
-        ]
-      };
+      parts = [
+        { inlineData: { mimeType: 'image/jpeg', data: payload } },
+        { text: "Распознай все позиции в этом чеке и сформируй список в формате JSON." }
+      ];
     } else {
-      contents = {
-        parts: [{ text: `Проанализируй следующую строительную заметку и извлеки данные для сметы: ${payload}` }]
-      };
+      parts = [
+        { text: `Распознай строительные позиции из этой заметки: "${payload}". Сформируй JSON список.` }
+      ];
     }
 
     const response = await ai.models.generateContent({
       model: modelName,
-      contents,
+      contents: [{ role: 'user', parts }],
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
         responseMimeType: "application/json",
@@ -69,14 +69,19 @@ export const onRequestPost = async (context: { request: Request; env: Env }) => 
       }
     });
 
-    return new Response(response.text || "[]", {
+    const text = response.text;
+    if (!text) {
+      throw new Error("Модель вернула пустой ответ");
+    }
+
+    return new Response(text, {
       headers: { "Content-Type": "application/json" }
     });
 
   } catch (err: any) {
-    console.error("Worker Execution Error:", err);
+    console.error("Worker Error:", err);
     return new Response(
-      JSON.stringify({ error: err.message || "Ошибка ИИ при обработке запроса" }), 
+      JSON.stringify({ error: err.message || "Ошибка при обработке ИИ" }), 
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }

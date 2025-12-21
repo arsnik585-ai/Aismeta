@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { Project, Entry, EntryType, SyncQueueItem } from './types';
 import { getProjects, saveProject, getEntriesByProject, saveEntry, getSyncQueue, removeFromSyncQueue, addToSyncQueue, deleteProject, deleteEntry, generateId, getFullProjectData, initDB } from './db';
@@ -63,23 +62,37 @@ const App: React.FC = () => {
     setIsSyncing(true);
     for (const item of queue) {
       try {
-        let items: any[] = [];
+        let items: any = [];
         if (item.type === 'PHOTO') {
           items = await processImage(item.payload);
         } else {
           items = await processVoice(item.payload);
         }
 
+        // Если ИИ вернул не массив, оборачиваем или выбрасываем ошибку
+        const finalItems = Array.isArray(items) ? items : [];
+        
+        // Сначала удаляем временную карточку "Анализ..."
         await deleteEntry(item.entryId);
         
-        for (const entryData of items) {
+        if (finalItems.length === 0) {
+           throw new Error("ИИ не распознал ни одной позиции.");
+        }
+
+        for (const entryData of finalItems) {
           const newEntry: Entry = {
             id: generateId(),
             projectId: currentProject?.id || item.id.split('_')[0],
             date: Date.now(),
             processed: true,
             archived: false,
-            ...entryData,
+            name: entryData.name || 'Без названия',
+            type: entryData.type === 'LABOR' ? EntryType.LABOR : EntryType.MATERIAL,
+            quantity: entryData.quantity || 0,
+            unit: entryData.unit || 'шт',
+            price: entryData.price || 0,
+            total: entryData.total || (entryData.quantity * entryData.price) || 0,
+            vendor: entryData.vendor || null,
             images: item.type === 'PHOTO' ? [item.payload] : []
           };
           await saveEntry(newEntry);
@@ -89,15 +102,18 @@ const App: React.FC = () => {
       } catch (e: any) {
         console.error("Sync Error:", item.id, e);
         
+        // В случае ошибки обновляем временную запись, чтобы пользователь видел статус
         const db = await initDB();
         const tx = db.transaction('entries', 'readwrite');
         const store = tx.objectStore('entries');
         const req = store.get(item.entryId);
+        
         req.onsuccess = () => {
           const entry = req.result;
           if (entry) {
             entry.processed = true;
-            entry.error = e.message || "Ошибка ИИ";
+            entry.name = "Ошибка анализа";
+            entry.error = e.message || "Ошибка сервера ИИ";
             store.put(entry);
           }
         };
@@ -175,12 +191,9 @@ const App: React.FC = () => {
     if (format === 'html') {
       const materials = entries.filter(e => e.type === EntryType.MATERIAL);
       const labor = entries.filter(e => e.type === EntryType.LABOR);
-
-      // Для HTML отчета используем Set, чтобы не дублировать одни и те же фото чеков
       const seenImages = new Set<string>();
 
       const renderItems = (items: Entry[]) => items.map(item => {
-        // Оставляем только те изображения, которые еще не показывались в этом отчете
         const uniqueImages = (item.images || []).filter(img => {
             if (seenImages.has(img)) return false;
             seenImages.add(img);
@@ -207,37 +220,7 @@ const App: React.FC = () => {
         `;
       }).join('');
 
-      const htmlContent = `<!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>${project.name} - Отчет</title>
-          <style>
-            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 40px; color: #334155; line-height: 1.5; max-width: 800px; margin: 0 auto; background: #f8fafc; }
-            .header { background: #fff; padding: 30px; border-radius: 20px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); margin-bottom: 30px; }
-            h1 { color: #059669; margin: 0; font-size: 2em; }
-            .address { color: #64748b; font-size: 0.9em; margin-top: 5px; }
-            .section { background: #fff; padding: 30px; border-radius: 20px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); margin-bottom: 20px; }
-            .section-title { font-size: 1.2em; font-weight: 800; color: #059669; border-bottom: 2px solid #ecfdf5; padding-bottom: 10px; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 0.05em; }
-            @media print { body { background: #fff; padding: 0; } .header, .section { box-shadow: none; border: 1px solid #eee; } }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <h1>${project.name}</h1>
-            <p class="address">${project.address || 'Адрес не указан'}</p>
-          </div>
-          <div class="section">
-            <div class="section-title">Материалы</div>
-            ${renderItems(materials)}
-          </div>
-          <div class="section">
-            <div class="section-title">Работы</div>
-            ${renderItems(labor)}
-          </div>
-        </body>
-      </html>`;
+      const htmlContent = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${project.name} - Отчет</title><style>body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 40px; color: #334155; line-height: 1.5; max-width: 800px; margin: 0 auto; background: #f8fafc; }.header { background: #fff; padding: 30px; border-radius: 20px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); margin-bottom: 30px; }h1 { color: #059669; margin: 0; font-size: 2em; }.address { color: #64748b; font-size: 0.9em; margin-top: 5px; }.section { background: #fff; padding: 30px; border-radius: 20px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); margin-bottom: 20px; }.section-title { font-size: 1.2em; font-weight: 800; color: #059669; border-bottom: 2px solid #ecfdf5; padding-bottom: 10px; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 0.05em; }@media print { body { background: #fff; padding: 0; } .header, .section { box-shadow: none; border: 1px solid #eee; } }</style></head><body><div class="header"><h1>${project.name}</h1><p class="address">${project.address || 'Адрес не указан'}</p></div><div class="section"><div class="section-title">Материалы</div>${renderItems(materials)}</div><div class="section"><div class="section-title">Работы</div>${renderItems(labor)}</div></body></html>`;
 
       const blob = new Blob([htmlContent], { type: 'text/html' });
       const url = URL.createObjectURL(blob);
@@ -308,7 +291,7 @@ const App: React.FC = () => {
           setInitialAction(null); 
           refreshProjects();
         }}
-        title={currentProject ? currentProject.name : 'EstimatAI'}
+        title={currentProject ? currentProject.name : 'BuildFlow AI'}
         viewingArchive={viewingArchive}
         onToggleArchive={() => setViewingArchive(!viewingArchive)}
         onImport={handleImport}
