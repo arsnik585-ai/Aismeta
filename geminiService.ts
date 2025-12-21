@@ -2,7 +2,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 
 /**
  * BuildFlow AI Service
- * Использует process.env.API_KEY напрямую согласно системным требованиям.
+ * Конфигурация с встроенным ключом для исправления ошибки инициализации в браузере.
  */
 
 const SYSTEM_INSTRUCTION = `Вы — ведущий инженер BuildFlow AI. 
@@ -29,7 +29,8 @@ const ITEM_SCHEMA = {
 };
 
 export const processImage = async (base64Image: string) => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  // Используем предоставленный ключ напрямую
+  const ai = new GoogleGenAI({ apiKey: "AIzaSyAJxr6Wob4etFjLsjTzSTXn9v52mgqa9iQ" });
   
   try {
     const response = await ai.models.generateContent({
@@ -52,12 +53,12 @@ export const processImage = async (base64Image: string) => {
     return JSON.parse(response.text.trim());
   } catch (err: any) {
     console.error("[AI_ERROR]", err);
-    throw new Error(err.message || "Ошибка при обработке изображения");
+    throw err;
   }
 };
 
 export const processVoice = async (transcript: string) => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = new GoogleGenAI({ apiKey: "AIzaSyAJxr6Wob4etFjLsjTzSTXn9v52mgqa9iQ" });
   
   try {
     const response = await ai.models.generateContent({
@@ -77,6 +78,6 @@ export const processVoice = async (transcript: string) => {
     return JSON.parse(response.text.trim());
   } catch (err: any) {
     console.error("[AI_ERROR]", err);
-    throw new Error(err.message || "Ошибка при обработке голоса");
+    throw err;
   }
 };
