@@ -60,70 +60,71 @@ const App: React.FC = () => {
     if (queue.length === 0) return;
 
     setIsSyncing(true);
-    for (const item of queue) {
-      try {
-        let aiResult: any;
-        if (item.type === 'PHOTO') {
-          aiResult = await processImage(item.payload);
-        } else {
-          aiResult = await processVoice(item.payload);
-        }
-
-        const resultItems = Array.isArray(aiResult) ? aiResult : (aiResult.items || []);
-        
-        if (resultItems.length === 0) {
-          throw new Error("ИИ не распознал позиций на фото или в голосе.");
-        }
-
-        await deleteEntry(item.entryId);
-
-        for (const entryData of resultItems) {
-          const newEntry: Entry = {
-            id: generateId(),
-            projectId: currentProject?.id || item.id.split('_')[0],
-            date: Date.now(),
-            processed: true,
-            archived: false,
-            name: entryData.name || 'Распознанная позиция',
-            type: entryData.type === 'LABOR' ? EntryType.LABOR : EntryType.MATERIAL,
-            quantity: entryData.quantity || 0,
-            unit: entryData.unit || 'шт',
-            price: entryData.price || 0,
-            total: entryData.total || ((entryData.quantity || 0) * (entryData.price || 0)) || 0,
-            vendor: entryData.vendor || null,
-            images: item.type === 'PHOTO' ? [item.payload] : []
-          };
-          await saveEntry(newEntry);
-        }
-
-        await removeFromSyncQueue(item.id);
-      } catch (e: any) {
-        console.error("Sync Logic Error:", item.id, e);
-        
-        // If it's a 503 or network error, skip this item and try later (don't remove from queue)
-        if (e.message?.includes('503') || e.message?.includes('перегружен') || !navigator.onLine) {
-          continue; 
-        }
-
-        // Terminal error: update the placeholder entry with error details
-        const db = await initDB();
-        const tx = db.transaction('entries', 'readwrite');
-        const store = tx.objectStore('entries');
-        const req = store.get(item.entryId);
-        
-        req.onsuccess = () => {
-          const entry = req.result;
-          if (entry) {
-            entry.processed = true;
-            entry.error = e.message || "Сбой анализа";
-            store.put(entry);
+    try {
+      for (const item of queue) {
+        try {
+          let aiResult: any;
+          if (item.type === 'PHOTO') {
+            aiResult = await processImage(item.payload);
+          } else {
+            aiResult = await processVoice(item.payload);
           }
-        };
-        await removeFromSyncQueue(item.id);
+
+          const resultItems = Array.isArray(aiResult) ? aiResult : (aiResult.items || []);
+          
+          if (resultItems.length === 0) {
+            throw new Error("ИИ не нашел позиций.");
+          }
+
+          // Удаляем временную карточку
+          await deleteEntry(item.entryId);
+
+          // Добавляем распознанные позиции
+          for (const entryData of resultItems) {
+            const newEntry: Entry = {
+              id: generateId(),
+              projectId: currentProject?.id || item.id.split('_')[0],
+              date: Date.now(),
+              processed: true,
+              archived: false,
+              name: entryData.name || 'Позиция без названия',
+              type: entryData.type === 'LABOR' ? EntryType.LABOR : EntryType.MATERIAL,
+              quantity: entryData.quantity || 0,
+              unit: entryData.unit || 'шт',
+              price: entryData.price || 0,
+              total: entryData.total || ((entryData.quantity || 0) * (entryData.price || 0)) || 0,
+              vendor: entryData.vendor || null,
+              images: item.type === 'PHOTO' ? [item.payload] : []
+            };
+            await saveEntry(newEntry);
+          }
+
+          await removeFromSyncQueue(item.id);
+        } catch (e: any) {
+          console.error("Sync Item Error:", item.id, e);
+          
+          // Обработка терминальной ошибки для записи в карточку
+          const db = await initDB();
+          const tx = db.transaction('entries', 'readwrite');
+          const store = tx.objectStore('entries');
+          const request = store.get(item.entryId);
+          
+          request.onsuccess = () => {
+            const entry = request.result;
+            if (entry) {
+              entry.processed = true;
+              entry.error = e.message || "Ошибка ИИ";
+              store.put(entry);
+            }
+          };
+
+          await removeFromSyncQueue(item.id);
+        }
       }
+    } finally {
+      setIsSyncing(false);
+      await refreshProjects();
     }
-    setIsSyncing(false);
-    await refreshProjects();
   }, [isOnline, isSyncing, currentProject, refreshProjects]);
 
   useEffect(() => {
