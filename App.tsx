@@ -6,6 +6,14 @@ import Dashboard from './components/Dashboard';
 import ProjectDetail from './components/ProjectDetail';
 import Header from './components/Header';
 
+interface ExportPreview {
+  format: 'text' | 'html' | 'json';
+  content: string;
+  project: Project;
+  blob: Blob;
+  fileName: string;
+}
+
 const App: React.FC = () => {
   const [currentProject, setCurrentProject] = useState<Project | null>(null);
   const [initialAction, setInitialAction] = useState<string | null>(null);
@@ -14,6 +22,9 @@ const App: React.FC = () => {
   const [laborTotals, setLaborTotals] = useState<Record<string, number>>({});
   const [viewingArchive, setViewingArchive] = useState(false);
   const [activeTab, setActiveTab] = useState<EntryType>(EntryType.MATERIAL);
+  
+  // State for preview
+  const [exportPreview, setExportPreview] = useState<ExportPreview | null>(null);
 
   const refreshProjects = useCallback(async () => {
     try {
@@ -43,15 +54,17 @@ const App: React.FC = () => {
     refreshProjects();
   }, [refreshProjects]);
 
-  const handleExport = async (project: Project, format: 'text' | 'html' | 'json') => {
+  const handlePrepareExport = async (project: Project, format: 'text' | 'html' | 'json') => {
     const data = await getFullProjectData(project.id);
     const dateStr = new Date().toLocaleDateString('ru-RU');
     
     let blob: Blob;
     let fileName: string;
+    let previewContent: string = "";
 
     if (format === 'json') {
-      blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+      previewContent = JSON.stringify(data, null, 2);
+      blob = new Blob([previewContent], { type: 'application/json' });
       fileName = `${project.name}.ais`;
     } else if (format === 'text') {
       let text = `ПРОЕКТ: ${project.name}\nАДРЕС: ${project.address}\nДАТА ОТЧЕТА: ${dateStr}\n\n`;
@@ -63,6 +76,7 @@ const App: React.FC = () => {
       data.entries.filter(e => e.type === EntryType.LABOR).forEach(e => {
         text += `- ${e.name}: ${e.quantity} ${e.unit} x ${e.price} = ${e.total} руб. (${e.vendor || '-'})\n`;
       });
+      previewContent = text;
       blob = new Blob([text], { type: 'text/plain' });
       fileName = `${project.name}_смета.txt`;
     } else {
@@ -174,9 +188,24 @@ const App: React.FC = () => {
         </body>
         </html>
       `;
+      previewContent = htmlContent;
       blob = new Blob([htmlContent], { type: 'text/html' });
       fileName = `${project.name}_смета.html`;
     }
+
+    setExportPreview({
+      format,
+      content: previewContent,
+      project,
+      blob,
+      fileName
+    });
+  };
+
+  const handleExecuteExport = async () => {
+    if (!exportPreview) return;
+
+    const { blob, fileName, project } = exportPreview;
 
     if (navigator.canShare && navigator.canShare({ files: [new File([blob], fileName, { type: blob.type })] })) {
       try {
@@ -186,6 +215,7 @@ const App: React.FC = () => {
           title: `Смета: ${project.name}`,
           text: `Отчет по объекту: ${project.name}`,
         });
+        setExportPreview(null);
         return;
       } catch (err) {
         if ((err as Error).name !== 'AbortError') console.error('Share failed:', err);
@@ -200,6 +230,7 @@ const App: React.FC = () => {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+    setExportPreview(null);
   };
 
   const handleImport = (file: File) => {
@@ -307,7 +338,7 @@ const App: React.FC = () => {
                     await refreshProjects();
                 }
             }}
-            onShare={handleExport}
+            onShare={handlePrepareExport}
             onQuickAction={(p, a) => {
                 setCurrentProject(p);
                 setInitialAction(a);
@@ -316,6 +347,61 @@ const App: React.FC = () => {
           />
         )}
       </main>
+
+      {/* Export Preview Modal */}
+      {exportPreview && (
+        <div className="fixed inset-0 bg-slate-950/98 z-[100] flex flex-col items-center justify-center p-4 md:p-8 animate-in fade-in duration-300">
+          <div className="bg-slate-900 border border-slate-800 w-full max-w-4xl h-[90vh] rounded-[2.5rem] flex flex-col shadow-2xl overflow-hidden">
+            <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900/50 backdrop-blur-md">
+              <div>
+                <h3 className="text-xl font-bold text-emerald-400 coding-font tracking-tighter uppercase flex items-center gap-2">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                  ПРЕДПРОСМОТР ОТЧЕТА
+                </h3>
+                <p className="text-[10px] text-slate-500 font-mono uppercase tracking-[0.2em] mt-1">Формат: {exportPreview.format.toUpperCase()} • {exportPreview.project.name}</p>
+              </div>
+              <button 
+                onClick={() => setExportPreview(null)}
+                className="p-3 bg-slate-800 text-slate-400 rounded-2xl hover:text-white transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-auto bg-slate-950 p-4 md:p-8">
+              {exportPreview.format === 'html' ? (
+                <div className="w-full h-full bg-white rounded-xl overflow-hidden border border-slate-800">
+                  <iframe 
+                    title="Report Preview" 
+                    srcDoc={exportPreview.content} 
+                    className="w-full h-full border-none"
+                  />
+                </div>
+              ) : (
+                <pre className="text-xs md:text-sm text-emerald-500 coding-font whitespace-pre-wrap leading-relaxed bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-inner">
+                  {exportPreview.content}
+                </pre>
+              )}
+            </div>
+
+            <div className="p-6 border-t border-slate-800 bg-slate-900/50 flex flex-col md:flex-row gap-4">
+              <button 
+                onClick={() => setExportPreview(null)}
+                className="flex-1 bg-slate-800 py-4 rounded-2xl font-bold text-slate-400 uppercase text-xs tracking-widest active:scale-95 transition-all"
+              >
+                ОТМЕНА
+              </button>
+              <button 
+                onClick={handleExecuteExport}
+                className="flex-1 bg-emerald-600 py-4 rounded-2xl font-bold text-white uppercase text-xs tracking-widest shadow-xl shadow-emerald-950/20 active:scale-95 transition-all flex items-center justify-center gap-3"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+                ОТПРАВИТЬ ОТЧЕТ
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
