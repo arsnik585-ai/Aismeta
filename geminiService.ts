@@ -2,6 +2,9 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { EntryType } from "./types";
 
+// Используем ключ, предоставленный пользователем напрямую
+const API_KEY = "AIzaSyAJxr6Wob4etFjLsjTzSTXn9v52mgqa9iQ";
+
 const SYSTEM_INSTRUCTION = `Вы — эксперт по составлению строительных смет. 
 Ваша задача: анализировать входящий текст (чеки или голосовые заметки) и извлекать из них список позиций.
 Контекст: исключительно строительство, ремонт, отделка и инженерные коммуникации.
@@ -34,11 +37,11 @@ const RESPONSE_SCHEMA = {
 };
 
 export const processImage = async (base64Image: string) => {
-  // Use process.env.API_KEY directly as required by guidelines.
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  // Используем Gemini 3 Flash Preview - самая стабильная модель для бесплатных ключей
+  const ai = new GoogleGenAI({ apiKey: API_KEY });
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
+      model: 'gemini-3-flash-preview',
       contents: {
         parts: [
           { inlineData: { mimeType: 'image/jpeg', data: base64Image } },
@@ -60,8 +63,7 @@ export const processImage = async (base64Image: string) => {
 };
 
 export const processVoice = async (transcript: string) => {
-  // Use process.env.API_KEY directly as required by guidelines.
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = new GoogleGenAI({ apiKey: API_KEY });
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',

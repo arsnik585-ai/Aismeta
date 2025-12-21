@@ -17,6 +17,7 @@ const App: React.FC = () => {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [isSyncing, setIsSyncing] = useState(false);
   const [viewingArchive, setViewingArchive] = useState(false);
+  const [activeTab, setActiveTab] = useState<EntryType>(EntryType.MATERIAL);
 
   const refreshProjects = useCallback(async () => {
     try {
@@ -175,24 +176,36 @@ const App: React.FC = () => {
       const materials = entries.filter(e => e.type === EntryType.MATERIAL);
       const labor = entries.filter(e => e.type === EntryType.LABOR);
 
-      const renderItems = (items: Entry[]) => items.map(item => `
-        <div style="border-bottom: 1px solid #eee; padding: 15px 0;">
-          <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-            <div>
-              <div style="font-weight: bold; font-size: 1.1em; color: #1e293b;">${item.name || 'Без названия'}</div>
-              <div style="font-size: 0.85em; color: #64748b; margin-top: 4px;">
-                ${item.quantity || 0} ${item.unit || ''} × ${item.price || 0} ₽ | ${item.vendor || 'Без поставщика'}
+      // Для HTML отчета используем Set, чтобы не дублировать одни и те же фото чеков
+      const seenImages = new Set<string>();
+
+      const renderItems = (items: Entry[]) => items.map(item => {
+        // Оставляем только те изображения, которые еще не показывались в этом отчете
+        const uniqueImages = (item.images || []).filter(img => {
+            if (seenImages.has(img)) return false;
+            seenImages.add(img);
+            return true;
+        });
+
+        return `
+          <div style="border-bottom: 1px solid #eee; padding: 15px 0;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+              <div>
+                <div style="font-weight: bold; font-size: 1.1em; color: #1e293b;">${item.name || 'Без названия'}</div>
+                <div style="font-size: 0.85em; color: #64748b; margin-top: 4px;">
+                  ${item.quantity || 0} ${item.unit || ''} × ${item.price || 0} ₽ | ${item.vendor || 'Без поставщика'}
+                </div>
               </div>
+              <div style="font-weight: bold; font-size: 1.1em; color: #059669;">${(item.total || 0).toLocaleString()} ₽</div>
             </div>
-            <div style="font-weight: bold; font-size: 1.1em; color: #059669;">${(item.total || 0).toLocaleString()} ₽</div>
+            ${uniqueImages.length > 0 ? `
+              <div style="margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap;">
+                ${uniqueImages.map(img => `<img src="data:image/jpeg;base64,${img}" style="max-width: 200px; border-radius: 8px; border: 1px solid #e2e8f0;" />`).join('')}
+              </div>
+            ` : ''}
           </div>
-          ${item.images && item.images.length > 0 ? `
-            <div style="margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap;">
-              ${item.images.map(img => `<img src="data:image/jpeg;base64,${img}" style="max-width: 200px; border-radius: 8px; border: 1px solid #e2e8f0;" />`).join('')}
-            </div>
-          ` : ''}
-        </div>
-      `).join('');
+        `;
+      }).join('');
 
       const htmlContent = `<!DOCTYPE html>
       <html>
@@ -290,11 +303,17 @@ const App: React.FC = () => {
       
       <Header 
         isDetail={!!currentProject} 
-        onBack={() => { setCurrentProject(null); setInitialAction(null); }}
-        title={currentProject ? currentProject.name : 'AI СМЕТА'}
+        onBack={() => { 
+          setCurrentProject(null); 
+          setInitialAction(null); 
+          refreshProjects();
+        }}
+        title={currentProject ? currentProject.name : 'EstimatAI'}
         viewingArchive={viewingArchive}
         onToggleArchive={() => setViewingArchive(!viewingArchive)}
         onImport={handleImport}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
       />
 
       <main className="flex-1 p-4 md:p-6 overflow-y-auto">
@@ -304,6 +323,7 @@ const App: React.FC = () => {
             isOnline={isOnline} 
             onSyncRequested={handleSync}
             initialAction={initialAction}
+            activeTab={activeTab}
           />
         ) : (
           <Dashboard 

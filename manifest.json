@@ -1,7 +1,7 @@
 
 {
-  "name": "Aiсмета: BuildFlow AI",
-  "short_name": "Aiсмета",
+  "name": "EstimatAI",
+  "short_name": "EstimatAI",
   "description": "Автономная строительная смета с ИИ",
   "start_url": ".",
   "display": "standalone",

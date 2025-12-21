@@ -43,7 +43,7 @@ const ProjectCard: React.FC<{
     const diff = e.targetTouches[0].clientX - touchStart.current;
     if (Math.abs(diff) > 10) isMoving.current = true;
     if (diff < 0) {
-      setTranslateX(Math.max(diff, -180));
+      setTranslateX(Math.max(diff, -100));
     } else {
       setTranslateX(0);
     }
@@ -51,7 +51,7 @@ const ProjectCard: React.FC<{
 
   const onTouchEnd = () => {
     if (translateX < -60) {
-      setTranslateX(isArchivedView ? -170 : -100);
+      setTranslateX(-100);
     } else {
       setTranslateX(0);
     }
@@ -81,29 +81,20 @@ const ProjectCard: React.FC<{
     <div className="relative overflow-hidden rounded-[2rem] bg-slate-950">
       <div className="absolute inset-0 flex items-center justify-end px-4 gap-2">
         {isArchivedView ? (
-          <>
-            <button 
-              onClick={handleRestore} 
-              className="bg-emerald-600 text-white h-[80%] px-4 rounded-xl text-[9px] font-bold uppercase shadow-lg flex flex-col items-center justify-center gap-1 active:bg-emerald-500"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-              ВЕРНУТЬ
-            </button>
-            <button 
-              onClick={handleDelete} 
-              className="bg-red-600 text-white h-[80%] px-4 rounded-xl text-[9px] font-bold uppercase shadow-lg flex flex-col items-center justify-center gap-1 active:bg-red-500"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-              УДАЛИТЬ
-            </button>
-          </>
+          <button 
+            onClick={handleRestore} 
+            className="bg-emerald-600 text-white h-[80%] px-6 rounded-xl text-[9px] font-bold uppercase shadow-lg flex flex-col items-center justify-center gap-1 active:bg-emerald-500"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+            ВЕРНУТЬ
+          </button>
         ) : (
           <button 
-            onClick={handleArchive} 
-            className="bg-amber-600 text-white h-[80%] px-6 rounded-xl text-[9px] font-bold uppercase shadow-lg flex flex-col items-center justify-center gap-1 active:bg-amber-500"
+              onClick={handleDelete} 
+              className="bg-red-600 text-white h-[80%] px-6 rounded-xl text-[9px] font-bold uppercase shadow-lg flex flex-col items-center justify-center gap-1 active:bg-red-500"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
-            В АРХИВ
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+              УДАЛИТЬ
           </button>
         )}
       </div>
@@ -121,36 +112,38 @@ const ProjectCard: React.FC<{
             <span className="text-[10px] text-emerald-400 font-mono bg-emerald-950 border border-emerald-900/50 px-3 py-1 rounded-full">
               {new Date(p.createdAt).toLocaleString('ru', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
             </span>
-            <div className="flex gap-2" onClick={e => e.stopPropagation()}>
-              <button 
-                onClick={(e) => { e.stopPropagation(); onShareClick(p); }}
-                className="p-2.5 text-emerald-400 bg-emerald-950 border border-emerald-900/50 rounded-xl transition-colors active:bg-emerald-900"
-                title="Экспорт / Поделиться"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
-              </button>
-              <button 
-                onClick={(e) => { e.stopPropagation(); onDuplicate(p); }}
-                className="p-2.5 text-cyan-400 bg-cyan-950 border border-cyan-900/50 rounded-xl transition-colors active:bg-cyan-900"
-                title="Дублировать"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" /></svg>
-              </button>
-              <button 
-                onClick={(e) => { e.stopPropagation(); onRenameStart(p); }}
-                className="p-2.5 text-slate-400 bg-slate-800 rounded-xl transition-colors"
-                title="Редактировать название"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" strokeWidth={2}/></svg>
-              </button>
-              <button 
-                onClick={(e) => { e.stopPropagation(); onArchiveToggle(p.id); }}
-                className="p-2.5 text-amber-500 bg-amber-950 border border-amber-900/50 rounded-xl transition-colors active:bg-amber-900"
-                title="В архив"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
-              </button>
-            </div>
+            {!isArchivedView && (
+              <div className="flex gap-2" onClick={e => e.stopPropagation()}>
+                <button 
+                  onClick={handleArchive}
+                  className="p-2.5 text-amber-400 bg-amber-950 border border-amber-900/50 rounded-xl transition-colors active:bg-amber-900"
+                  title="Архивировать"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
+                </button>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); onShareClick(p); }}
+                  className="p-2.5 text-emerald-400 bg-emerald-950 border border-emerald-900/50 rounded-xl transition-colors active:bg-emerald-900"
+                  title="Экспорт"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+                </button>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); onDuplicate(p); }}
+                  className="p-2.5 text-cyan-400 bg-cyan-950 border border-cyan-900/50 rounded-xl transition-colors active:bg-cyan-900"
+                  title="Дублировать"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" /></svg>
+                </button>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); onRenameStart(p); }}
+                  className="p-2.5 text-slate-400 bg-slate-800 rounded-xl transition-colors"
+                  title="Переименовать"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" strokeWidth={2}/></svg>
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="mb-4">
@@ -180,29 +173,38 @@ const ProjectCard: React.FC<{
               </div>
            </div>
            
-           <div className="flex gap-1.5" onClick={e => e.stopPropagation()}>
-              <button onClick={() => onQuickAction(p, 'material')} className="p-2.5 bg-slate-950 rounded-xl text-emerald-500 border border-slate-800 active:bg-slate-800 transition-all shadow-md" title="Добавить материал">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-              </button>
-              <button onClick={() => onQuickAction(p, 'labor')} className="p-2.5 bg-slate-950 rounded-xl text-cyan-500 border border-slate-800 active:bg-slate-800 transition-all shadow-md" title="Добавить работу">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z" />
-                </svg>
-              </button>
-              <button onClick={() => onQuickAction(p, 'photo')} className="p-2.5 bg-slate-950 rounded-xl text-cyan-400 border border-slate-800 active:bg-slate-800 transition-all shadow-md" title="Камера">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                  <circle cx="12" cy="13" r="3" strokeWidth={2} />
-                </svg>
-              </button>
-              <button onClick={() => onQuickAction(p, 'voice')} className="p-2.5 bg-slate-950 rounded-xl text-emerald-400 border border-slate-800 active:bg-slate-800 transition-all shadow-md" title="Голос">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" strokeWidth={2}/>
-                </svg>
-              </button>
-           </div>
+           {isArchivedView ? (
+             <button 
+                onClick={handleRestore}
+                className="px-6 py-4 bg-emerald-600 rounded-2xl text-white font-bold text-[11px] uppercase tracking-widest active:scale-95 shadow-xl shadow-emerald-900/20"
+             >
+                Восстановить
+             </button>
+           ) : (
+             <div className="flex gap-1.5" onClick={e => e.stopPropagation()}>
+                <button onClick={() => onQuickAction(p, 'material')} className="p-2.5 bg-slate-950 rounded-xl text-emerald-500 border border-slate-800 active:bg-slate-800 transition-all shadow-md" title="Добавить материал">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
+                </button>
+                <button onClick={() => onQuickAction(p, 'labor')} className="p-2.5 bg-slate-950 rounded-xl text-cyan-500 border border-slate-800 active:bg-slate-800 transition-all shadow-md" title="Добавить работу">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z" />
+                  </svg>
+                </button>
+                <button onClick={() => onQuickAction(p, 'photo')} className="p-2.5 bg-slate-950 rounded-xl text-cyan-400 border border-slate-800 active:bg-slate-800 transition-all shadow-md" title="Камера">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                    <circle cx="12" cy="13" r="3" strokeWidth={2} />
+                  </svg>
+                </button>
+                <button onClick={() => onQuickAction(p, 'voice')} className="p-2.5 bg-slate-950 rounded-xl text-emerald-400 border border-slate-800 active:bg-slate-800 transition-all shadow-md" title="Голос">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" strokeWidth={2}/>
+                  </svg>
+                </button>
+             </div>
+           )}
         </div>
       </div>
     </div>
