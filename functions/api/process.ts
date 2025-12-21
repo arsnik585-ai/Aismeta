@@ -7,9 +7,13 @@ interface Env {
 export const onRequestPost = async (context: { request: Request; env: Env }) => {
   const { request, env } = context;
 
+  // Ключ берется из переменных окружения Cloudflare Pages
   if (!env.API_KEY) {
     return new Response(
-      JSON.stringify({ error: "API_KEY_MISSING", message: "Системная ошибка: API ключ не настроен." }), 
+      JSON.stringify({ 
+        error: "API_KEY_MISSING", 
+        message: "Критическая ошибка: API_KEY не настроен в панели управления Cloudflare (Settings -> Variables)." 
+      }), 
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
@@ -18,9 +22,9 @@ export const onRequestPost = async (context: { request: Request; env: Env }) => 
     const body = await request.json() as { action: string; payload: string };
     const { action, payload } = body;
 
-    if (!payload || payload.length < 5) {
+    if (!payload) {
       return new Response(
-        JSON.stringify({ error: "EMPTY_PAYLOAD", message: "Данные не получены. Попробуйте еще раз." }), 
+        JSON.stringify({ error: "EMPTY_PAYLOAD", message: "Данные не получены." }), 
         { status: 400, headers: { "Content-Type": "application/json" } }
       );
     }
@@ -29,9 +33,9 @@ export const onRequestPost = async (context: { request: Request; env: Env }) => 
     
     const SYSTEM_INSTRUCTION = `Вы — ведущий инженер BuildFlow AI. 
     Ваша задача: извлекать строительные материалы (MATERIAL) и работы (LABOR) из чеков или голосовых заметок.
-    Верни СТРОГО массив объектов JSON. Не добавляй никаких комментариев, markdown разметки или пояснений.
-    Если цена или количество не найдены, установи их в 0.
-    Поле 'type' может быть только 'MATERIAL' или 'LABOR'.`;
+    Верни СТРОГО массив объектов JSON. Не добавляй никаких комментариев и markdown разметки.
+    Поле 'type' может быть только 'MATERIAL' или 'LABOR'.
+    Если данные не найдены, верни [].`;
 
     const ITEM_SCHEMA = {
       type: Type.ARRAY,
@@ -51,28 +55,19 @@ export const onRequestPost = async (context: { request: Request; env: Env }) => 
     };
 
     const modelName = 'gemini-3-flash-preview';
-    let contents;
+    let promptText = "";
 
     if (action === 'image') {
-      contents = {
-        role: 'user',
-        parts: [
-          { inlineData: { mimeType: 'image/jpeg', data: payload } },
-          { text: "Извлеки список позиций в формате JSON." }
-        ]
-      };
+      promptText = "Проанализируй этот чек. Извлеки список материалов и работ в формате JSON.";
     } else {
-      contents = {
-        role: 'user',
-        parts: [
-          { text: `Разбери заметку: "${payload}". Верни JSON список материалов и работ.` }
-        ]
-      };
+      promptText = `Разбери строительную заметку: "${payload}". Сформируй JSON список материалов и работ.`;
     }
 
     const result = await ai.models.generateContent({
       model: modelName,
-      contents: [contents],
+      contents: action === 'image' 
+        ? [{ role: 'user', parts: [{ inlineData: { mimeType: 'image/jpeg', data: payload } }, { text: promptText }] }]
+        : [{ role: 'user', parts: [{ text: promptText }] }],
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
         responseMimeType: "application/json",
@@ -80,44 +75,22 @@ export const onRequestPost = async (context: { request: Request; env: Env }) => 
       }
     });
 
-    let outputText = "";
-    try {
-      outputText = result.text?.trim() || "";
-    } catch (e) {
-      console.error("Error getting text from Gemini result:", e);
-      return new Response(
-        JSON.stringify({ error: "AI_TEXT_ERROR", message: "ИИ не смог сформировать текстовый ответ." }), 
-        { status: 500, headers: { "Content-Type": "application/json" } }
-      );
-    }
-    
-    if (!outputText) {
-      return new Response(
-        JSON.stringify({ error: "AI_EMPTY", message: "ИИ вернул пустой ответ. Попробуйте еще раз." }), 
-        { status: 500, headers: { "Content-Type": "application/json" } }
-      );
-    }
+    const outputText = result.text;
+    if (!outputText) throw new Error("ИИ вернул пустой ответ.");
 
-    // Финальная проверка валидности JSON перед отправкой
-    try {
-      JSON.parse(outputText);
-    } catch (e) {
-      return new Response(
-        JSON.stringify({ error: "INVALID_JSON", message: "Ошибка структуры данных ИИ. Повторите попытку." }), 
-        { status: 500, headers: { "Content-Type": "application/json" } }
-      );
-    }
+    // Проверка структуры перед отправкой
+    JSON.parse(outputText);
 
     return new Response(outputText, {
       headers: { "Content-Type": "application/json" }
     });
 
   } catch (err: any) {
-    console.error("Worker Global Error:", err);
+    console.error("Worker Error:", err);
     return new Response(
       JSON.stringify({ 
-        error: "SERVER_ERROR", 
-        message: err.message || "Внутренняя ошибка сервера при обработке запроса." 
+        error: "AI_ERROR", 
+        message: "Ошибка анализа: " + (err.message || "Попробуйте еще раз.")
       }), 
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
