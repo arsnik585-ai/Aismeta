@@ -1,67 +1,94 @@
+import { GoogleGenAI, Type } from "@google/genai";
+
 /**
  * BuildFlow AI Service (Client Side)
- * This service ONLY communicates with the server-side Cloudflare Worker.
- * DO NOT import @google/genai here to avoid "API Key required in browser" errors.
+ * Using the Gemini API directly from the browser as per system guidelines.
  */
 
-const log = (msg: string, data?: any) => {
-  console.log(`%c[AI_SERVICE] ${msg}`, 'color: #10b981; font-weight: bold', data || '');
+const getAI = () => {
+  if (!process.env.API_KEY) {
+    throw new Error("API_KEY is not defined in the environment.");
+  }
+  return new GoogleGenAI({ apiKey: process.env.API_KEY });
 };
 
-const errLog = (msg: string, data?: any) => {
-  console.error(`%c[AI_SERVICE_ERROR] ${msg}`, 'color: #ef4444; font-weight: bold', data || '');
+const SYSTEM_INSTRUCTION = `Вы — ведущий инженер BuildFlow AI. 
+Ваша задача: извлекать строительные материалы (MATERIAL) и работы (LABOR) из чеков или голосовых заметок.
+Верни СТРОГО массив объектов JSON. Не добавляй никаких комментариев и markdown разметки.
+Поле 'type' может быть только 'MATERIAL' или 'LABOR'.
+Если данные не найдены, верни [].`;
+
+const ITEM_SCHEMA = {
+  type: Type.ARRAY,
+  items: {
+    type: Type.OBJECT,
+    properties: {
+      name: { type: Type.STRING, description: "Название позиции" },
+      type: { type: Type.STRING, enum: ['MATERIAL', 'LABOR'], description: "Тип" },
+      quantity: { type: Type.NUMBER, description: "Количество" },
+      unit: { type: Type.STRING, description: "Ед. изм." },
+      price: { type: Type.NUMBER, description: "Цена" },
+      total: { type: Type.NUMBER, description: "Итого" },
+      vendor: { type: Type.STRING, description: "Поставщик" },
+    },
+    required: ['name', 'type'],
+  },
+  propertyOrdering: ["name", "type", "quantity", "unit", "price", "total", "vendor"]
 };
 
 export const processImage = async (base64Image: string) => {
-  log("Requesting image analysis via /api/process");
+  console.log("[AI_SERVICE] Processing image locally...");
+  const ai = getAI();
   
   try {
-    const response = await fetch('/api/process', {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify({ action: 'image', payload: base64Image })
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: [{ 
+        role: 'user', 
+        parts: [
+          { inlineData: { mimeType: 'image/jpeg', data: base64Image } }, 
+          { text: "Проанализируй этот чек. Извлеки список материалов и работ в формате JSON." }
+        ] 
+      }],
+      config: {
+        systemInstruction: SYSTEM_INSTRUCTION,
+        responseMimeType: "application/json",
+        responseSchema: ITEM_SCHEMA,
+      }
     });
 
-    if (!response.ok) {
-      const text = await response.text();
-      errLog(`HTTP Error ${response.status}`, text);
-      throw new Error(`SERVER_ERROR_${response.status}: ${text || 'Unknown response'}`);
-    }
-
-    const data = await response.json();
-    log("Analysis complete", data);
-    return data;
+    const text = response.text;
+    if (!text) throw new Error("Empty response from AI");
+    return JSON.parse(text);
   } catch (err: any) {
-    errLog("Process failed", err.message);
+    console.error("[AI_SERVICE_ERROR] Image processing failed:", err);
     throw err;
   }
 };
 
 export const processVoice = async (transcript: string) => {
-  log("Requesting voice analysis via /api/process");
+  console.log("[AI_SERVICE] Processing voice transcript locally...");
+  const ai = getAI();
   
   try {
-    const response = await fetch('/api/process', {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify({ action: 'voice', payload: transcript })
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: [{ 
+        role: 'user', 
+        parts: [{ text: `Разбери строительную заметку: "${transcript}". Сформируй JSON список материалов и работ.` }] 
+      }],
+      config: {
+        systemInstruction: SYSTEM_INSTRUCTION,
+        responseMimeType: "application/json",
+        responseSchema: ITEM_SCHEMA,
+      }
     });
 
-    if (!response.ok) {
-      const text = await response.text();
-      errLog(`HTTP Error ${response.status}`, text);
-      throw new Error(`SERVER_ERROR_${response.status}: ${text || 'Unknown response'}`);
-    }
-
-    return await response.json();
+    const text = response.text;
+    if (!text) throw new Error("Empty response from AI");
+    return JSON.parse(text);
   } catch (err: any) {
-    errLog("Voice analysis failed", err.message);
+    console.error("[AI_SERVICE_ERROR] Voice processing failed:", err);
     throw err;
   }
 };
