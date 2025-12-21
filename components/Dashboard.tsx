@@ -56,7 +56,7 @@ const ProjectCard: React.FC<{
 
   return (
     <div 
-      className={`relative rounded-xl bg-slate-950 transition-all duration-200 ${isDragged ? 'opacity-20 scale-95' : 'opacity-100'}`}
+      className={`relative rounded-xl bg-slate-950 select-none cursor-move transition-all duration-200 ${isDragged ? 'opacity-20 scale-95' : 'opacity-100'}`}
       draggable
       onDragStart={(e) => onDragStart(e, index)}
       onDragOver={(e) => onDragOver(e, index)}
@@ -209,6 +209,10 @@ const Dashboard: React.FC<DashboardProps> = ({
   const handleDragStart = (e: React.DragEvent, index: number) => {
     setDraggedIdx(index);
     e.dataTransfer.effectAllowed = 'move';
+    // Visual placeholder for mobile browsers
+    const dragImg = new Image();
+    dragImg.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+    e.dataTransfer.setDragImage(dragImg, 0, 0);
   };
 
   const handleDragOver = (e: React.DragEvent, index: number) => {
@@ -257,7 +261,7 @@ const Dashboard: React.FC<DashboardProps> = ({
           <input 
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 focus:border-emerald-500 outline-none text-white text-sm"
+            className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 focus:border-emerald-500 outline-none text-white text-sm cursor-text"
             placeholder="Название"
             required
             autoFocus
@@ -265,7 +269,7 @@ const Dashboard: React.FC<DashboardProps> = ({
           <input 
             value={address}
             onChange={(e) => setAddress(e.target.value)}
-            className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 focus:border-emerald-500 outline-none text-white text-sm"
+            className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 focus:border-emerald-500 outline-none text-white text-sm cursor-text"
             placeholder="Адрес объекта"
           />
           <button type="submit" className="w-full bg-emerald-600 py-2.5 rounded-lg font-bold uppercase text-[10px] tracking-widest hover:bg-emerald-500 transition-colors shadow-xl">
@@ -281,12 +285,12 @@ const Dashboard: React.FC<DashboardProps> = ({
                 <input 
                   value={editNameValue} 
                   onChange={e => setEditNameValue(e.target.value)} 
-                  className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 text-white coding-font outline-none text-xs"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 text-white coding-font outline-none text-xs cursor-text"
                 />
                 <input 
                   value={editAddressValue} 
                   onChange={e => setEditAddressValue(e.target.value)} 
-                  className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 text-white text-[10px] coding-font outline-none"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 text-white text-[10px] coding-font outline-none cursor-text"
                 />
                 <div className="flex gap-2 pt-1">
                     <button onClick={() => { onRename(editingId, editNameValue, editAddressValue); setEditingId(null); }} className="flex-1 bg-emerald-600 py-2.5 rounded-lg font-bold text-white uppercase text-[9px] active:bg-emerald-500">Сохранить</button>

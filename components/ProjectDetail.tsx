@@ -93,20 +93,20 @@ const EntryCard: React.FC<{
 
     return (
         <div 
-          className={`bg-slate-900 border border-slate-800 rounded-xl p-2 shadow-md space-y-1 relative group transition-all duration-200 ${isDragged ? 'opacity-20 scale-95' : 'opacity-100'}`}
+          className={`bg-slate-900 border border-slate-800 rounded-xl p-2 shadow-md space-y-1 relative select-none transition-all duration-200 cursor-move ${isDragged ? 'opacity-20 scale-95' : 'opacity-100'}`}
           draggable
           onDragStart={(evt) => onDragStart(evt, index)}
           onDragOver={(evt) => onDragOver(evt, index)}
           onDrop={(evt) => onDrop(evt, index)}
         >
             <div className="flex justify-between items-start gap-1">
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0" onMouseDown={ev => ev.stopPropagation()}>
                     <textarea 
                         value={e.name}
                         onChange={(evt) => handleChange({ name: evt.target.value })}
                         placeholder="Наименование..."
                         rows={1}
-                        className="w-full bg-transparent text-[14px] text-white font-bold outline-none focus:text-emerald-400 placeholder:text-slate-700 resize-none overflow-hidden leading-tight"
+                        className="w-full bg-transparent text-[14px] text-white font-bold outline-none focus:text-emerald-400 placeholder:text-slate-700 resize-none overflow-hidden leading-tight cursor-text"
                         onInput={(evt) => {
                             const target = evt.target as HTMLTextAreaElement;
                             target.style.height = 'auto';
@@ -116,16 +116,19 @@ const EntryCard: React.FC<{
                 </div>
                 
                 <div className="relative" ref={menuRef}>
-                    <button onClick={() => setShowMenu(!showMenu)} className="p-0.5 text-slate-300 hover:text-white transition-colors">
+                    <button 
+                      onClick={(ev) => { ev.stopPropagation(); setShowMenu(!showMenu); }} 
+                      className="p-1 text-slate-300 hover:text-white transition-colors"
+                    >
                         <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" /></svg>
                     </button>
                     {showMenu && (
                         <div className="absolute right-0 top-6 w-32 bg-slate-800 border border-slate-700 rounded-lg shadow-2xl py-1 z-20 animate-in fade-in zoom-in-95 duration-75 origin-top-right">
-                            <button onClick={() => { onTypeToggle(e.id); setShowMenu(false); }} className="w-full text-left px-2 py-1.5 text-[8px] font-bold text-slate-300 hover:bg-slate-700 uppercase tracking-widest flex items-center gap-1.5">
+                            <button onClick={(ev) => { ev.stopPropagation(); onTypeToggle(e.id); setShowMenu(false); }} className="w-full text-left px-2 py-1.5 text-[8px] font-bold text-slate-300 hover:bg-slate-700 uppercase tracking-widest flex items-center gap-1.5">
                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" strokeWidth={2}/></svg>
                                 ТИП
                             </button>
-                            <button onClick={() => { onDelete(e.id); setShowMenu(false); }} className="w-full text-left px-2 py-1.5 text-[8px] font-bold text-red-400 hover:bg-red-950/30 uppercase tracking-widest flex items-center gap-1.5">
+                            <button onClick={(ev) => { ev.stopPropagation(); onDelete(e.id); setShowMenu(false); }} className="w-full text-left px-2 py-1.5 text-[8px] font-bold text-red-400 hover:bg-red-950/30 uppercase tracking-widest flex items-center gap-1.5">
                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7" strokeWidth={2}/></svg>
                                 УДАЛИТЬ
                             </button>
@@ -134,14 +137,14 @@ const EntryCard: React.FC<{
                 </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-1 bg-slate-950/40 p-1 rounded-lg border border-slate-800/40">
+            <div className="grid grid-cols-3 gap-1 bg-slate-950/40 p-1 rounded-lg border border-slate-800/40" onMouseDown={ev => ev.stopPropagation()}>
                 <div className="space-y-0">
                     <span className="block text-[7px] text-slate-300 font-mono uppercase tracking-tighter font-bold">Кол-во</span>
                     <input 
                         type="number" 
                         value={e.quantity === null ? '' : e.quantity}
                         onChange={(evt) => handleChange({ quantity: evt.target.value === '' ? null : parseFloat(evt.target.value) })}
-                        className="w-full bg-transparent text-[14px] text-white font-bold outline-none tabular-nums"
+                        className="w-full bg-transparent text-[14px] text-white font-bold outline-none tabular-nums cursor-text"
                         placeholder="0"
                     />
                 </div>
@@ -151,7 +154,7 @@ const EntryCard: React.FC<{
                         list={`units-${e.id}`}
                         value={e.unit || ''}
                         onChange={(evt) => handleChange({ unit: evt.target.value })}
-                        className="w-full bg-transparent text-[14px] text-white font-bold outline-none"
+                        className="w-full bg-transparent text-[14px] text-white font-bold outline-none cursor-text"
                         placeholder="шт"
                     />
                     <datalist id={`units-${e.id}`}>
@@ -164,7 +167,7 @@ const EntryCard: React.FC<{
                         type="number" 
                         value={e.price === null ? '' : e.price}
                         onChange={(evt) => handleChange({ price: evt.target.value === '' ? null : parseFloat(evt.target.value) })}
-                        className="w-full bg-transparent text-[14px] text-emerald-500 font-bold outline-none tabular-nums"
+                        className="w-full bg-transparent text-[14px] text-emerald-500 font-bold outline-none tabular-nums cursor-text"
                         placeholder="0"
                     />
                 </div>
@@ -173,7 +176,7 @@ const EntryCard: React.FC<{
             <div className="flex items-center gap-1">
                 <div className="flex-1 flex gap-1 overflow-x-auto no-scrollbar items-center min-h-[32px]">
                     <button 
-                        onClick={() => fileInputRef.current?.click()}
+                        onClick={(ev) => { ev.stopPropagation(); fileInputRef.current?.click(); }}
                         className="w-8 h-8 shrink-0 flex items-center justify-center rounded-md bg-slate-950 text-slate-300 hover:text-emerald-500 border border-slate-700 border-dashed transition-all active:scale-90"
                     >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4" strokeWidth={2}/></svg>
@@ -183,7 +186,7 @@ const EntryCard: React.FC<{
                         <div key={idx} className="relative shrink-0">
                             <img 
                                 src={`data:image/jpeg;base64,${img}`} 
-                                onClick={() => onShowFullscreen(img, e.id, idx)}
+                                onClick={(ev) => { ev.stopPropagation(); onShowFullscreen(img, e.id, idx); }}
                                 className="w-8 h-8 object-cover rounded-md border border-slate-800 shadow-sm cursor-pointer"
                             />
                         </div>
@@ -274,6 +277,10 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, activeTab, onDat
   const handleDragStart = (e: React.DragEvent, index: number) => {
     setDraggedIdx(index);
     e.dataTransfer.effectAllowed = 'move';
+    // Visual placeholder for mobile browsers
+    const dragImg = new Image();
+    dragImg.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+    e.dataTransfer.setDragImage(dragImg, 0, 0);
   };
 
   const handleDragOver = (e: React.DragEvent, index: number) => {
