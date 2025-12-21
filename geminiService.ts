@@ -1,20 +1,9 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
 /**
- * BuildFlow AI Service (Client Side)
+ * BuildFlow AI Service
+ * Directly uses the injected process.env.API_KEY.
  */
-
-const getAI = () => {
-  // Проверяем наличие ключа в process.env как требует инструкция
-  const apiKey = typeof process !== 'undefined' ? process.env.API_KEY : undefined;
-  
-  if (!apiKey || apiKey === 'undefined' || apiKey === '') {
-    // Выбрасываем понятную ошибку ПЕРЕД инициализацией SDK, чтобы избежать "An API Key must be set..."
-    throw new Error("AI_CONFIG_ERROR: API_KEY не обнаружен. Убедитесь, что ключ настроен в окружении.");
-  }
-  
-  return new GoogleGenAI({ apiKey });
-};
 
 const SYSTEM_INSTRUCTION = `Вы — ведущий инженер BuildFlow AI. 
 Ваша задача: извлекать строительные материалы (MATERIAL) и работы (LABOR) из чеков или голосовых заметок.
@@ -37,14 +26,13 @@ const ITEM_SCHEMA = {
     },
     required: ['name', 'type'],
   },
-  propertyOrdering: ["name", "type", "quantity", "unit", "price", "total", "vendor"]
 };
 
 export const processImage = async (base64Image: string) => {
-  console.log("[AI_SERVICE] Initializing local analysis...");
+  // Use process.env.API_KEY directly as per system instructions
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   try {
-    const ai = getAI();
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: [{ 
@@ -61,20 +49,18 @@ export const processImage = async (base64Image: string) => {
       }
     });
 
-    const text = response.text;
-    if (!text) throw new Error("Empty response from AI");
-    return JSON.parse(text);
+    if (!response.text) throw new Error("ИИ вернул пустой ответ");
+    return JSON.parse(response.text.trim());
   } catch (err: any) {
-    console.error("[AI_SERVICE_ERROR] Image processing failed:", err);
-    throw err;
+    console.error("[AI_ERROR]", err);
+    throw new Error(err.message || "Ошибка при обработке изображения");
   }
 };
 
 export const processVoice = async (transcript: string) => {
-  console.log("[AI_SERVICE] Initializing voice analysis...");
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   try {
-    const ai = getAI();
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: [{ 
@@ -88,11 +74,10 @@ export const processVoice = async (transcript: string) => {
       }
     });
 
-    const text = response.text;
-    if (!text) throw new Error("Empty response from AI");
-    return JSON.parse(text);
+    if (!response.text) throw new Error("ИИ вернул пустой ответ");
+    return JSON.parse(response.text.trim());
   } catch (err: any) {
-    console.error("[AI_SERVICE_ERROR] Voice processing failed:", err);
-    throw err;
+    console.error("[AI_ERROR]", err);
+    throw new Error(err.message || "Ошибка при обработке голоса");
   }
 };

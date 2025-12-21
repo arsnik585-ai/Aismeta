@@ -60,78 +60,75 @@ const App: React.FC = () => {
     if (queue.length === 0) return;
 
     setIsSyncing(true);
-    console.log("[SYNC_LOOP] Starting sync for", queue.length, "items");
+    console.log("[SYNC] Items to process:", queue.length);
 
     try {
       for (const item of queue) {
-        let errorToRecord: string | null = null;
-        let resultItems: any[] = [];
+        let aiResult: any[] = [];
+        let errorMsg: string | null = null;
 
         try {
-          let aiResult: any;
-          if (item.type === 'PHOTO') {
-            aiResult = await processImage(item.payload);
-          } else {
-            aiResult = await processVoice(item.payload);
-          }
-          resultItems = Array.isArray(aiResult) ? aiResult : (aiResult.items || []);
-          if (resultItems.length === 0) errorToRecord = "ИИ не нашел позиций в ответе.";
+          const result = item.type === 'PHOTO' 
+            ? await processImage(item.payload) 
+            : await processVoice(item.payload);
+          
+          aiResult = Array.isArray(result) ? result : [];
+          if (aiResult.length === 0) errorMsg = "Позиции не найдены";
         } catch (e: any) {
-          console.error("[SYNC_LOOP_ERROR]", e);
-          errorToRecord = e.message || "Неизвестная ошибка";
+          console.error("[SYNC_ERROR]", e);
+          errorMsg = e.message || "Ошибка ИИ";
         }
 
         const db = await initDB();
-        const tx = db.transaction('entries', 'readwrite');
+        const tx = db.transaction(['entries'], 'readwrite');
         const store = tx.objectStore('entries');
 
-        if (errorToRecord) {
+        if (errorMsg) {
           const entry = await new Promise<Entry | undefined>((resolve) => {
             const req = store.get(item.entryId);
             req.onsuccess = () => resolve(req.result);
           });
-
           if (entry) {
             entry.processed = true;
-            entry.error = errorToRecord;
+            entry.error = errorMsg;
             await new Promise((resolve) => {
               const req = store.put(entry);
               req.onsuccess = resolve;
             });
           }
         } else {
-          // Success
+          // Success: delete placeholder and add real entries
           await new Promise((resolve) => {
             const req = store.delete(item.entryId);
             req.onsuccess = resolve;
           });
-          
-          for (const entryData of resultItems) {
+
+          for (const data of aiResult) {
             const newEntry: Entry = {
               id: generateId(),
               projectId: currentProject?.id || item.id.split('_')[0],
               date: Date.now(),
               processed: true,
               archived: false,
-              name: entryData.name || 'Позиция без названия',
-              type: entryData.type === 'LABOR' ? EntryType.LABOR : EntryType.MATERIAL,
-              quantity: entryData.quantity || 0,
-              unit: entryData.unit || 'шт',
-              price: entryData.price || 0,
-              total: entryData.total || ((entryData.quantity || 0) * (entryData.price || 0)) || 0,
-              vendor: entryData.vendor || null,
+              name: data.name || 'Без названия',
+              type: data.type === 'LABOR' ? EntryType.LABOR : EntryType.MATERIAL,
+              quantity: data.quantity || 0,
+              unit: data.unit || 'шт',
+              price: data.price || 0,
+              total: data.total || ((data.quantity || 0) * (data.price || 0)) || 0,
+              vendor: data.vendor || null,
               images: item.type === 'PHOTO' ? [item.payload] : []
             };
             await new Promise((resolve) => {
-                const req = store.put(newEntry);
-                req.onsuccess = resolve;
+              const req = store.put(newEntry);
+              req.onsuccess = resolve;
             });
           }
         }
         await removeFromSyncQueue(item.id);
       }
-    } catch (criticalErr: any) {
-      console.error("[SYNC_LOOP_CRITICAL]", criticalErr);
+    } catch (err) {
+      console.error("[CRITICAL_SYNC_ERROR]", err);
     } finally {
       setIsSyncing(false);
       await refreshProjects();
@@ -139,9 +136,7 @@ const App: React.FC = () => {
   }, [isOnline, isSyncing, currentProject, refreshProjects]);
 
   useEffect(() => {
-    if (isOnline) {
-      handleSync();
-    }
+    if (isOnline) handleSync();
   }, [isOnline, handleSync]);
 
   const createNewProject = async (name: string, address: string) => {
@@ -165,9 +160,11 @@ const App: React.FC = () => {
   };
 
   const handleProjectPermanentDelete = async (id: string) => {
-    await deleteProject(id);
-    await refreshProjects();
-    if (currentProject?.id === id) setCurrentProject(null);
+    if (window.confirm("Удалить проект навсегда?")) {
+      await deleteProject(id);
+      await refreshProjects();
+      if (currentProject?.id === id) setCurrentProject(null);
+    }
   };
 
   const handleProjectQuickAction = (project: Project, action: string) => {
