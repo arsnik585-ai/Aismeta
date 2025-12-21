@@ -47,14 +47,12 @@ const App: React.FC = () => {
     const data = await getFullProjectData(project.id);
     const dateStr = new Date().toLocaleDateString('ru-RU');
     
+    let blob: Blob;
+    let fileName: string;
+
     if (format === 'json') {
-      const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${project.name}.ais`;
-      a.click();
-      URL.revokeObjectURL(url);
+      blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+      fileName = `${project.name}.ais`;
     } else if (format === 'text') {
       let text = `ПРОЕКТ: ${project.name}\nАДРЕС: ${project.address}\nДАТА ОТЧЕТА: ${dateStr}\n\n`;
       text += `--- МАТЕРИАЛЫ ---\n`;
@@ -65,14 +63,9 @@ const App: React.FC = () => {
       data.entries.filter(e => e.type === EntryType.LABOR).forEach(e => {
         text += `- ${e.name}: ${e.quantity} ${e.unit} x ${e.price} = ${e.total} руб. (${e.vendor || '-'})\n`;
       });
-      const blob = new Blob([text], { type: 'text/plain' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${project.name}_смета.txt`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } else if (format === 'html') {
+      blob = new Blob([text], { type: 'text/plain' });
+      fileName = `${project.name}_смета.txt`;
+    } else {
       const mTotal = data.entries.filter(e => e.type === EntryType.MATERIAL).reduce((s, e) => s + (e.total || 0), 0);
       const lTotal = data.entries.filter(e => e.type === EntryType.LABOR).reduce((s, e) => s + (e.total || 0), 0);
 
@@ -83,9 +76,9 @@ const App: React.FC = () => {
             <thead>
               <tr>
                 <th>Наименование</th>
-                <th>Кол-во</th>
-                <th>Цена</th>
-                <th>Итого</th>
+                <th style="width: 80px;">Кол-во</th>
+                <th style="width: 100px;">Цена</th>
+                <th style="width: 120px;">Итого</th>
                 <th>Поставщик</th>
               </tr>
             </thead>
@@ -93,7 +86,7 @@ const App: React.FC = () => {
               ${entries.map(e => `
                 <tr>
                   <td>
-                    <strong>${e.name || 'Без названия'}</strong>
+                    <div style="font-weight: 600; font-size: 1.1em; color: #1e293b;">${e.name || 'Без названия'}</div>
                     ${e.images && e.images.length > 0 ? `
                       <div class="photo-grid">
                         ${e.images.map(img => `<img src="data:image/jpeg;base64,${img}" />`).join('')}
@@ -101,9 +94,9 @@ const App: React.FC = () => {
                     ` : ''}
                   </td>
                   <td>${e.quantity || 0} ${e.unit || ''}</td>
-                  <td>${(e.price || 0).toLocaleString()} ₽</td>
-                  <td>${(e.total || 0).toLocaleString()} ₽</td>
-                  <td>${e.vendor || '-'}</td>
+                  <td style="white-space: nowrap;">${(e.price || 0).toLocaleString()} ₽</td>
+                  <td style="white-space: nowrap; font-weight: 600; color: #10b981;">${(e.total || 0).toLocaleString()} ₽</td>
+                  <td style="color: #64748b; font-size: 0.9em;">${e.vendor || '-'}</td>
                 </tr>
               `).join('')}
             </tbody>
@@ -113,62 +106,102 @@ const App: React.FC = () => {
 
       const htmlContent = `
         <!DOCTYPE html>
-        <html>
+        <html lang="ru">
         <head>
           <meta charset="UTF-8">
-          <title>Отчет: ${project.name}</title>
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Смета: ${project.name}</title>
           <style>
-            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #333; line-height: 1.6; padding: 40px; background: #f9f9f9; }
-            .report-container { max-width: 1000px; margin: 0 auto; background: white; padding: 40px; box-shadow: 0 0 20px rgba(0,0,0,0.05); border-radius: 8px; }
-            h1 { color: #10b981; margin-bottom: 5px; border-bottom: 2px solid #f0f0f0; padding-bottom: 15px; }
-            .meta { margin-bottom: 30px; font-size: 0.9em; color: #666; }
-            .totals { display: flex; gap: 20px; margin-bottom: 40px; background: #f8fafc; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0; }
-            .total-card { flex: 1; }
-            .total-card span { display: block; font-size: 0.8em; text-transform: uppercase; color: #94a3b8; font-weight: bold; }
-            .total-card strong { font-size: 1.5em; color: #0f172a; }
-            .section { margin-bottom: 50px; }
-            h2 { font-size: 1.2em; text-transform: uppercase; color: #475569; letter-spacing: 0.05em; border-left: 4px solid #10b981; padding-left: 15px; margin-bottom: 20px; }
-            table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-            th { text-align: left; background: #f1f5f9; padding: 12px; font-size: 0.85em; text-transform: uppercase; color: #64748b; }
-            td { padding: 15px 12px; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
-            .photo-grid { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
-            .photo-grid img { width: 120px; height: 120px; object-cover; border-radius: 6px; border: 1px solid #e2e8f0; }
-            @media print { body { background: white; padding: 0; } .report-container { box-shadow: none; width: 100%; max-width: none; padding: 0; } }
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+            body { font-family: 'Inter', sans-serif; color: #1e293b; line-height: 1.5; padding: 20px; background: #f8fafc; margin: 0; }
+            .report-container { max-width: 900px; margin: 0 auto; background: white; padding: 40px; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+            header { border-bottom: 2px solid #f1f5f9; padding-bottom: 24px; margin-bottom: 32px; }
+            h1 { font-size: 2.5em; margin: 0; color: #0f172a; letter-spacing: -0.025em; }
+            .meta { margin-top: 12px; color: #64748b; font-size: 0.95em; display: flex; flex-direction: column; gap: 4px; }
+            .totals-grid { display: grid; grid-template-cols: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 40px; }
+            .total-card { background: #f1f5f9; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0; }
+            .total-card.highlight { background: #ecfdf5; border-color: #10b981; }
+            .total-card span { display: block; font-size: 0.75em; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; font-weight: 700; margin-bottom: 4px; }
+            .total-card strong { font-size: 1.75em; color: #0f172a; display: block; }
+            .total-card.highlight strong { color: #059669; }
+            .section { margin-bottom: 48px; }
+            h2 { font-size: 1.25em; font-weight: 700; color: #334155; margin-bottom: 20px; border-left: 4px solid #10b981; padding-left: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+            table { width: 100%; border-collapse: collapse; }
+            th { text-align: left; background: #f8fafc; padding: 12px; font-size: 0.75em; text-transform: uppercase; color: #64748b; border-bottom: 1px solid #e2e8f0; }
+            td { padding: 16px 12px; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+            .photo-grid { display: grid; grid-template-cols: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; margin-top: 12px; }
+            .photo-grid img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; border: 1px solid #e2e8f0; transition: transform 0.2s; cursor: pointer; }
+            .photo-grid img:hover { transform: scale(1.05); }
+            @media print { 
+              body { background: white; padding: 0; }
+              .report-container { box-shadow: none; width: 100%; max-width: none; padding: 0; }
+              .total-card { border: 1px solid #ddd; }
+              .photo-grid { grid-template-cols: repeat(4, 1fr); }
+            }
+            @media (max-width: 600px) {
+              .report-container { padding: 20px; }
+              h1 { font-size: 1.75em; }
+              table, thead, tbody, th, td, tr { display: block; }
+              th { display: none; }
+              td { padding: 12px 0; border-bottom: 2px solid #f1f5f9; }
+              td::before { content: attr(data-label); display: block; font-weight: bold; color: #64748b; font-size: 0.75em; text-transform: uppercase; margin-bottom: 4px; }
+            }
           </style>
         </head>
         <body>
           <div class="report-container">
-            <h1>${project.name}</h1>
-            <div class="meta">
-              <div>📍 Адрес: ${project.address || 'Не указан'}</div>
-              <div>📅 Дата отчета: ${dateStr}</div>
-            </div>
+            <header>
+              <h1>${project.name}</h1>
+              <div class="meta">
+                <span>📍 Адрес: <strong>${project.address || 'Не указан'}</strong></span>
+                <span>📅 Сформировано: <strong>${dateStr}</strong></span>
+              </div>
+            </header>
             
-            <div class="totals">
+            <div class="totals-grid">
               <div class="total-card"><span>Материалы</span><strong>${mTotal.toLocaleString()} ₽</strong></div>
               <div class="total-card"><span>Работы</span><strong>${lTotal.toLocaleString()} ₽</strong></div>
-              <div class="total-card"><span>Итого</span><strong style="color: #10b981">${(mTotal + lTotal).toLocaleString()} ₽</strong></div>
+              <div class="total-card highlight"><span>Общий Итог</span><strong>${(mTotal + lTotal).toLocaleString()} ₽</strong></div>
             </div>
 
             ${renderSection('МАТЕРИАЛЫ', data.entries.filter(e => e.type === EntryType.MATERIAL))}
             ${renderSection('РАБОТЫ', data.entries.filter(e => e.type === EntryType.LABOR))}
 
-            <div style="text-align: center; margin-top: 50px; font-size: 0.7em; color: #cbd5e1; font-family: monospace;">
-              Сформировано в приложении smeta AI
-            </div>
+            <footer style="text-align: center; margin-top: 60px; padding-top: 24px; border-top: 1px solid #f1f5f9; font-size: 0.8em; color: #94a3b8;">
+              Отчет подготовлен в приложении <strong>smeta AI</strong>
+            </footer>
           </div>
         </body>
         </html>
       `;
-      
-      const blob = new Blob([htmlContent], { type: 'text/html' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${project.name}_отчет.html`;
-      a.click();
-      URL.revokeObjectURL(url);
+      blob = new Blob([htmlContent], { type: 'text/html' });
+      fileName = `${project.name}_смета.html`;
     }
+
+    // Modern Sharing (Mobile first)
+    if (navigator.canShare && navigator.canShare({ files: [new File([blob], fileName, { type: blob.type })] })) {
+      try {
+        const file = new File([blob], fileName, { type: blob.type });
+        await navigator.share({
+          files: [file],
+          title: `Смета: ${project.name}`,
+          text: `Отчет по объекту: ${project.name}`,
+        });
+        return;
+      } catch (err) {
+        if ((err as Error).name !== 'AbortError') console.error('Share failed:', err);
+      }
+    }
+
+    // Fallback: Classic Download
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   const handleImport = (file: File) => {

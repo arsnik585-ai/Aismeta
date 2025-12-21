@@ -6,9 +6,36 @@ import App from './App';
 // Service Worker Registration for PWA / Offline functionality
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js')
-      .then(reg => console.log('SW registered:', reg))
-      .catch(err => console.log('SW registration failed:', err));
+    // Calculate an absolute path for sw.js based on the current origin to avoid registration failures 
+    // caused by origin mismatch in proxied or sandboxed environments like AI Studio.
+    const swPath = new URL('./sw.js', window.location.href).pathname;
+
+    navigator.serviceWorker.register(swPath, { scope: './' })
+      .then(reg => {
+        console.log('[PWA] Service Worker registered successfully');
+        
+        // Автоматическое обновление при обнаружении нового воркера
+        reg.onupdatefound = () => {
+          const installingWorker = reg.installing;
+          if (installingWorker) {
+            installingWorker.onstatechange = () => {
+              if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                console.log('[PWA] New content is available; please refresh.');
+              }
+            };
+          }
+        };
+      })
+      .catch(err => {
+        // Log warning but don't break the app experience. 
+        // Cross-origin restrictions in sandboxes often prevent Service Worker registration.
+        console.warn('[PWA] Service Worker registration skipped or failed:', err.message);
+      });
+  });
+
+  // Гарантируем, что воркер берет управление немедленно
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    console.log('[PWA] Service Worker controller changed');
   });
 }
 

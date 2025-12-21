@@ -1,17 +1,26 @@
 
-const CACHE_NAME = 'smeta-cache-v1';
+const CACHE_NAME = 'smeta-v2';
+
+// Список ресурсов для предварительного кэширования (App Shell)
+// Только реально существующие и доступные в браузере файлы
 const STATIC_ASSETS = [
   './',
   'index.html',
   'manifest.json',
   'https://cdn.tailwindcss.com',
-  'https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&family=Inter:wght@400;700&display=swap'
+  'https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&family=Inter:wght@400;700&display=swap',
+  // Кэшируем основные зависимости из importmap
+  'https://esm.sh/react@^19.2.3',
+  'https://esm.sh/react-dom@^19.2.3',
+  'https://esm.sh/react-dom@^19.2.3/client',
+  'https://esm.sh/@google/genai@^1.34.0'
 ];
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
+      console.log('[SW] Pre-caching app shell');
       return cache.addAll(STATIC_ASSETS);
     })
   );
@@ -21,36 +30,48 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => Promise.all(
       keys.map((key) => {
-        if (key !== CACHE_NAME) return caches.delete(key);
+        if (key !== CACHE_NAME) {
+          console.log('[SW] Removing old cache', key);
+          return caches.delete(key);
+        }
       })
-    ))
+    )).then(() => self.clients.claim())
   );
 });
 
 self.addEventListener('fetch', (event) => {
-  // Do not cache API requests or external ESM modules that might need network
-  if (event.request.url.includes('/api/')) {
+  const { request } = event;
+  const url = new URL(request.url);
+
+  // Не кэшируем API запросы (они требуют интернета по определению)
+  if (url.pathname.includes('/api/')) {
     return;
   }
 
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
+    caches.match(request).then((cachedResponse) => {
+      // Возвращаем из кэша, если есть
       if (cachedResponse) {
         return cachedResponse;
       }
 
-      return fetch(event.request).then((networkResponse) => {
-        // Cache new assets dynamically (like hashed JS/CSS from Vite)
-        if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+      // Если нет в кэше, идем в сеть
+      return fetch(request).then((networkResponse) => {
+        // Кэшируем только успешные GET запросы
+        if (
+          request.method === 'GET' && 
+          networkResponse.status === 200 && 
+          (networkResponse.type === 'basic' || networkResponse.type === 'cors')
+        ) {
           const responseToCache = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
+            cache.put(request, responseToCache);
           });
         }
         return networkResponse;
       }).catch(() => {
-        // If offline and requesting navigation, return index.html
-        if (event.request.mode === 'navigate') {
+        // Если сеть недоступна (Airplane Mode) и это навигация — отдаем корень
+        if (request.mode === 'navigate') {
           return caches.match('./') || caches.match('index.html');
         }
       });
