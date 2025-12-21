@@ -2,9 +2,8 @@ import { GoogleGenAI, Type } from "@google/genai";
 
 /**
  * BuildFlow AI Service
- * Strictly adheres to Google GenAI Coding Guidelines:
- * 1. Uses process.env.API_KEY for initialization.
- * 2. Uses gemini-3-flash-preview model as required.
+ * Strictly adheres to Google GenAI Coding Guidelines.
+ * Diagnostic logs added to help user identify environment configuration issues.
  */
 
 const SYSTEM_INSTRUCTION = `Вы — ведущий инженер BuildFlow AI. 
@@ -30,10 +29,21 @@ const ITEM_SCHEMA = {
   }
 };
 
+const validateApiKey = () => {
+  const key = process.env.API_KEY;
+  if (!key || key === "undefined" || key.length < 10) {
+    console.error("CRITICAL: process.env.API_KEY is missing or invalid in the browser context.");
+    throw new Error("API_KEY_NOT_FOUND: Ключ API не найден в окружении браузера. Проверьте настройки сборки.");
+  }
+  return key;
+};
+
 export const processImage = async (base64Image: string) => {
-  // Инициализация внутри функции гарантирует доступ к актуальному окружению
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const apiKey = validateApiKey();
+  const ai = new GoogleGenAI({ apiKey });
   
+  console.log("AI_BOOT: Initializing gemini-3-flash-preview for image processing...");
+
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
     contents: [
@@ -64,8 +74,11 @@ export const processImage = async (base64Image: string) => {
 };
 
 export const processVoice = async (transcript: string) => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const apiKey = validateApiKey();
+  const ai = new GoogleGenAI({ apiKey });
   
+  console.log("AI_BOOT: Initializing gemini-3-flash-preview for voice transcript...");
+
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
     contents: [

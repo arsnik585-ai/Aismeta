@@ -6,9 +6,14 @@ interface SyncStatusProps {
 }
 
 const SyncStatus: React.FC<SyncStatusProps> = ({ isOnline, isSyncing }) => {
+  const hasApiKey = !!process.env.API_KEY && process.env.API_KEY !== 'undefined';
+
   return (
-    <div className={`fixed top-2 left-1/2 -translate-x-1/2 z-[60] pointer-events-none transition-all duration-700 transform ${isSyncing || !isOnline ? 'translate-y-0 opacity-100' : '-translate-y-12 opacity-0'}`}>
-      <div className={`px-4 py-1.5 rounded-full text-[10px] font-bold coding-font border backdrop-blur-xl shadow-2xl flex items-center gap-3 tracking-tighter ${
+    <div className="fixed top-2 left-0 right-0 z-[60] flex flex-col items-center gap-2 pointer-events-none px-4">
+      {/* Network & Sync Status */}
+      <div className={`px-4 py-1.5 rounded-full text-[10px] font-bold coding-font border backdrop-blur-xl shadow-2xl flex items-center gap-3 tracking-tighter transition-all duration-700 ${
+        isSyncing || !isOnline ? 'translate-y-0 opacity-100' : '-translate-y-12 opacity-0'
+      } ${
         !isOnline ? 'bg-red-950/40 border-red-500/50 text-red-400' : 'bg-emerald-950/40 border-emerald-500/50 text-emerald-400'
       }`}>
         <div className="relative flex h-2 w-2">
@@ -17,6 +22,13 @@ const SyncStatus: React.FC<SyncStatusProps> = ({ isOnline, isSyncing }) => {
         </div>
         {!isOnline ? 'NETWORK_OFFLINE :: BUFFER_MODE' : 'BUILDFLOW_AI :: SYNCHRONIZING_CORE'}
       </div>
+
+      {/* API Key Diagnostic (Shows only if key is missing) */}
+      {!hasApiKey && (
+        <div className="bg-red-600 text-white px-3 py-1 rounded-md text-[9px] font-black uppercase tracking-[0.2em] animate-bounce shadow-xl border-2 border-white/20">
+          SYSTEM_ERROR: API_KEY_MISSING_IN_BROWSER
+        </div>
+      )}
     </div>
   );
 };
