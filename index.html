@@ -16,29 +16,30 @@
             background-color: #020617;
             color: #f1f5f9;
             background-image: 
-                linear-gradient(rgba(16, 185, 129, 0.02) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(16, 185, 129, 0.02) 1px, transparent 1px);
-            background-size: 30px 30px;
+                linear-gradient(rgba(16, 185, 129, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(16, 185, 129, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
             overscroll-behavior-y: contain;
         }
         .coding-font { font-family: 'Fira Code', monospace; }
         .glass-panel {
-            background: rgba(15, 23, 42, 0.7);
-            backdrop-filter: blur(16px);
-            border: 1px solid rgba(16, 185, 129, 0.1);
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(16, 185, 129, 0.15);
         }
         @keyframes scanline {
-            0% { transform: translateY(-100%); }
-            100% { transform: translateY(1000%); }
+            0% { transform: translateY(-100%); opacity: 0; }
+            50% { opacity: 1; }
+            100% { transform: translateY(1000%); opacity: 0; }
         }
         .scan-effect::after {
             content: "";
             position: absolute;
             top: 0; left: 0; right: 0;
-            height: 2px;
-            background: rgba(16, 185, 129, 0.5);
-            box-shadow: 0 0 10px #10b981;
-            animation: scanline 3s linear infinite;
+            height: 3px;
+            background: #10b981;
+            box-shadow: 0 0 15px #10b981, 0 0 30px #10b981;
+            animation: scanline 4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
             z-index: 100;
             pointer-events: none;
         }

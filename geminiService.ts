@@ -1,7 +1,7 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
+// Эта функция возвращает строку, которая будет заменена на реальный ключ во время сборки в Netlify
 const getApiKey = () => {
-  // Эта строка будет заменена на реальный ключ во время деплоя через sed
   return process.env.API_KEY;
 };
 
