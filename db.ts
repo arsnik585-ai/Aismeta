@@ -1,5 +1,5 @@
 
-import { Project, Entry, SyncQueueItem } from './types';
+import { Project, Entry } from './types';
 
 const DB_NAME = 'AiSmetaDB';
 const DB_VERSION = 1;
@@ -22,9 +22,6 @@ export const initDB = (): Promise<IDBDatabase> => {
       if (!db.objectStoreNames.contains('entries')) {
         const entryStore = db.createObjectStore('entries', { keyPath: 'id' });
         entryStore.createIndex('projectId', 'projectId', { unique: false });
-      }
-      if (!db.objectStoreNames.contains('syncQueue')) {
-        db.createObjectStore('syncQueue', { keyPath: 'id' });
       }
     };
     request.onsuccess = () => resolve(request.result);
@@ -108,36 +105,6 @@ export const getEntriesByProject = async (projectId: string, showArchived = fals
       resolve(all.filter(e => (!!e.archived) === showArchived));
     };
     request.onerror = () => reject(request.error);
-  });
-};
-
-export const addToSyncQueue = async (item: SyncQueueItem) => {
-  const db = await initDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction('syncQueue', 'readwrite');
-    tx.objectStore('syncQueue').put(item);
-    tx.oncomplete = () => resolve(true);
-    tx.onerror = () => reject(tx.error);
-  });
-};
-
-export const getSyncQueue = async (): Promise<SyncQueueItem[]> => {
-  const db = await initDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction('syncQueue', 'readonly');
-    const request = tx.objectStore('syncQueue').getAll();
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
-};
-
-export const removeFromSyncQueue = async (id: string) => {
-  const db = await initDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction('syncQueue', 'readwrite');
-    tx.objectStore('syncQueue').delete(id);
-    tx.oncomplete = () => resolve(true);
-    tx.onerror = () => reject(tx.error);
   });
 };
 

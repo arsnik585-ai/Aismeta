@@ -192,17 +192,6 @@ const ProjectCard: React.FC<{
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z" />
                   </svg>
                 </button>
-                <button onClick={() => onQuickAction(p, 'photo')} className="p-2.5 bg-slate-950 rounded-xl text-cyan-400 border border-slate-800 active:bg-slate-800 transition-all shadow-md" title="Камера">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                    <circle cx="12" cy="13" r="3" strokeWidth={2} />
-                  </svg>
-                </button>
-                <button onClick={() => onQuickAction(p, 'voice')} className="p-2.5 bg-slate-950 rounded-xl text-emerald-400 border border-slate-800 active:bg-slate-800 transition-all shadow-md" title="Голос">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" strokeWidth={2}/>
-                  </svg>
-                </button>
              </div>
            )}
         </div>

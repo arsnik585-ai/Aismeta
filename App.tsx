@@ -1,11 +1,10 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Project, Entry, EntryType } from './types';
-import { getProjects, saveProject, getEntriesByProject, saveEntry, getSyncQueue, removeFromSyncQueue, deleteProject, deleteEntry, generateId, initDB } from './db';
-import { BuildFlowAssistant } from './geminiService';
+import { getProjects, saveProject, getEntriesByProject, deleteProject, generateId } from './db';
 import Dashboard from './components/Dashboard';
 import ProjectDetail from './components/ProjectDetail';
 import Header from './components/Header';
-import SyncStatus from './components/SyncStatus';
 
 const App: React.FC = () => {
   const [currentProject, setCurrentProject] = useState<Project | null>(null);
@@ -13,8 +12,6 @@ const App: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [materialTotals, setMaterialTotals] = useState<Record<string, number>>({});
   const [laborTotals, setLaborTotals] = useState<Record<string, number>>({});
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const [isSyncing, setIsSyncing] = useState(false);
   const [viewingArchive, setViewingArchive] = useState(false);
   const [activeTab, setActiveTab] = useState<EntryType>(EntryType.MATERIAL);
 
@@ -44,107 +41,10 @@ const App: React.FC = () => {
 
   useEffect(() => {
     refreshProjects();
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
   }, [refreshProjects]);
-
-  const handleSync = useCallback(async () => {
-    if (!isOnline || isSyncing) return;
-    const queue = await getSyncQueue();
-    if (queue.length === 0) return;
-
-    setIsSyncing(true);
-
-    try {
-      for (const item of queue) {
-        let aiResult: any[] = [];
-        let errorMsg: string | null = null;
-
-        try {
-          aiResult = item.type === 'PHOTO' 
-            ? await BuildFlowAssistant.analyzeReceipt(item.payload) 
-            : await BuildFlowAssistant.analyzeVoiceNote(item.payload);
-          
-          if (!Array.isArray(aiResult) || aiResult.length === 0) {
-            errorMsg = "Ассистент не обнаружил позиций";
-          }
-        } catch (e: any) {
-          console.error("[SYNC_ERROR]", e);
-          errorMsg = e.message || "Технический сбой ИИ";
-        }
-
-        const db = await initDB();
-        const tx = db.transaction(['entries'], 'readwrite');
-        const store = tx.objectStore('entries');
-
-        // Обработка результата
-        if (errorMsg) {
-          const entry = await new Promise<Entry | undefined>((resolve) => {
-            const req = store.get(item.entryId);
-            req.onsuccess = () => resolve(req.result);
-          });
-          if (entry) {
-            entry.processed = true;
-            entry.error = errorMsg;
-            await new Promise((resolve) => {
-              const req = store.put(entry);
-              req.onsuccess = resolve;
-            });
-          }
-        } else {
-          // Удаляем временную запись (индикатор анализа)
-          await new Promise((resolve) => {
-            const req = store.delete(item.entryId);
-            req.onsuccess = resolve;
-          });
-
-          // Сохраняем новые позиции от ассистента
-          for (const data of aiResult) {
-            const newEntry: Entry = {
-              id: generateId(),
-              projectId: currentProject?.id || item.id.split('_')[0],
-              date: Date.now(),
-              processed: true,
-              archived: false,
-              name: data.name || 'Позиция без названия',
-              type: data.type === 'LABOR' ? EntryType.LABOR : EntryType.MATERIAL,
-              quantity: data.quantity || 1,
-              unit: data.unit || 'шт',
-              price: data.price || 0,
-              total: data.total || ((data.quantity || 1) * (data.price || 0)),
-              vendor: data.vendor || (item.type === 'PHOTO' ? 'По чеку' : 'Голос'),
-              images: item.type === 'PHOTO' ? [item.payload] : []
-            };
-            await new Promise((resolve) => {
-              const req = store.put(newEntry);
-              req.onsuccess = resolve;
-            });
-          }
-        }
-        await removeFromSyncQueue(item.id);
-      }
-    } catch (err) {
-      console.error("[CRITICAL_SYNC_ERROR]", err);
-    } finally {
-      setIsSyncing(false);
-      await refreshProjects();
-    }
-  }, [isOnline, isSyncing, currentProject, refreshProjects]);
-
-  useEffect(() => {
-    if (isOnline) handleSync();
-  }, [isOnline, handleSync]);
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200 flex flex-col max-w-5xl mx-auto shadow-[0_0_100px_rgba(0,0,0,0.5)] border-x border-slate-900">
-      <SyncStatus isOnline={isOnline} isSyncing={isSyncing} />
-      
       <Header 
         isDetail={!!currentProject} 
         onBack={() => { 
@@ -152,7 +52,7 @@ const App: React.FC = () => {
           setInitialAction(null); 
           refreshProjects();
         }}
-        title={currentProject ? currentProject.name : 'BuildFlow AI'}
+        title={currentProject ? currentProject.name : 'BuildFlow'}
         viewingArchive={viewingArchive}
         onToggleArchive={() => setViewingArchive(!viewingArchive)}
         onImport={(file) => {}} 
@@ -164,10 +64,9 @@ const App: React.FC = () => {
         {currentProject ? (
           <ProjectDetail 
             project={currentProject} 
-            isOnline={isOnline} 
-            onSyncRequested={handleSync}
             initialAction={initialAction}
             activeTab={activeTab}
+            onDataChange={refreshProjects}
           />
         ) : (
           <Dashboard 

@@ -1,13 +1,13 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Project, Entry, EntryType } from '../types';
-import { getEntriesByProject, saveEntry, addToSyncQueue, deleteEntry, generateId } from '../db';
+import { getEntriesByProject, saveEntry, deleteEntry, generateId } from '../db';
 
 interface ProjectDetailProps {
   project: Project;
-  isOnline: boolean;
-  onSyncRequested: () => void;
   initialAction?: string | null;
   activeTab: EntryType;
+  onDataChange: () => void;
 }
 
 const EntryCard: React.FC<{
@@ -15,8 +15,7 @@ const EntryCard: React.FC<{
     onSelect: (e: Entry) => void;
     onPermanentDelete: (id: string) => void;
     onTypeToggle: (id: string) => void;
-    onRetry: (e: Entry) => void;
-}> = ({ e, onSelect, onPermanentDelete, onTypeToggle, onRetry }) => {
+}> = ({ e, onSelect, onPermanentDelete, onTypeToggle }) => {
     const [translateX, setTranslateX] = useState(0);
     const [showMenu, setShowMenu] = useState(false);
     const touchStart = useRef<number>(0);
@@ -58,12 +57,6 @@ const EntryCard: React.FC<{
         setTranslateX(0);
     };
 
-    const handleRetryAction = (evt: React.MouseEvent) => {
-        evt.stopPropagation();
-        onRetry(e);
-        setShowMenu(false);
-    };
-
     const stopBubbling = (evt: React.SyntheticEvent) => {
         evt.stopPropagation();
     };
@@ -86,24 +79,17 @@ const EntryCard: React.FC<{
                 onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
                 onClick={() => !isMoving.current && translateX === 0 && onSelect(e)}
                 style={{ transform: `translateX(${translateX}px)` }}
-                className={`bg-slate-900 border ${e.error ? 'border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.05)]' : e.processed ? 'border-slate-800' : 'border-cyan-500/50 animate-pulse'} p-5 rounded-[1.5rem] transition-transform duration-200 ease-out relative z-10 shadow-lg active:bg-slate-800 h-full flex flex-col justify-between cursor-pointer`}
+                className={`bg-slate-900 border border-slate-800 p-5 rounded-[1.5rem] transition-transform duration-200 ease-out relative z-10 shadow-lg active:bg-slate-800 h-full flex flex-col justify-between cursor-pointer`}
             >
                 <div className="flex justify-between items-start gap-3 relative">
                     <div className="flex-1 min-w-0 pr-8">
-                        <div className={`text-lg font-bold ${e.error ? 'text-red-400' : 'text-white'} leading-tight mb-1 truncate uppercase coding-font`}>
-                          {e.name || (e.error ? 'ОШИБКА АНАЛИЗА' : 'АНАЛИЗ...')}
+                        <div className={`text-lg font-bold text-white leading-tight mb-1 truncate uppercase coding-font`}>
+                          {e.name || 'БЕЗ НАЗВАНИЯ'}
                         </div>
                         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
-                            {e.error ? (
-                              <div className="text-[9px] text-red-400 font-mono uppercase bg-red-950/50 border border-red-900/50 px-2 py-0.5 rounded flex items-center gap-1.5 shrink-0 max-w-[200px] truncate">
-                                <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                {e.error}
-                              </div>
-                            ) : (
-                              <span className="text-[10px] text-cyan-400 font-mono uppercase bg-cyan-950 border border-cyan-900/50 px-2 py-0.5 rounded shrink-0">
+                            <span className="text-[10px] text-cyan-400 font-mono uppercase bg-cyan-950 border border-cyan-900/50 px-2 py-0.5 rounded shrink-0">
                                 {e.vendor || 'ПОСТАВЩИК?'}
-                              </span>
-                            )}
+                            </span>
                             {e.images && e.images.length > 0 && (
                                 <div className="bg-slate-800/50 px-2 py-0.5 rounded border border-slate-700/50 flex items-center gap-1 shrink-0">
                                    <svg className="w-2.5 h-2.5 text-slate-500" fill="currentColor" viewBox="0 0 20 20"><path d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" /></svg>
@@ -127,15 +113,6 @@ const EntryCard: React.FC<{
                         </button>
                         {showMenu && (
                           <div className="absolute right-0 top-10 w-48 bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl py-2 animate-in fade-in zoom-in-95 duration-150 origin-top-right">
-                            {e.error && (
-                               <button 
-                                  onClick={handleRetryAction} 
-                                  className="w-full text-left px-4 py-3 text-xs font-bold text-emerald-400 hover:bg-emerald-950/30 flex items-center gap-3"
-                               >
-                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                                 ПОВТОРИТЬ ИИ
-                               </button>
-                            )}
                             <button 
                                 onMouseDown={(evt) => { stopBubbling(evt); onTypeToggle(e.id); setShowMenu(false); }} 
                                 className="w-full text-left px-4 py-3 text-xs font-bold text-slate-300 hover:bg-slate-700 flex items-center gap-3"
@@ -164,18 +141,10 @@ const EntryCard: React.FC<{
                         </div>
                     </div>
                     <div className="text-right">
-                        {e.error ? (
-                           <button onClick={handleRetryAction} className="bg-red-600/10 text-red-400 p-2.5 rounded-xl border border-red-900/50 active:scale-95 transition-all">
-                              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                           </button>
-                        ) : (
-                          <>
-                            <span className="text-[9px] text-slate-500 font-mono uppercase block mb-1 opacity-60 tracking-widest">_ИТОГО_</span>
-                            <div className="text-2xl font-bold text-emerald-400 coding-font tracking-tighter tabular-nums">
-                                {e.total?.toLocaleString() || '0'} <span className="text-sm font-normal opacity-50">₽</span>
-                            </div>
-                          </>
-                        )}
+                        <span className="text-[9px] text-slate-500 font-mono uppercase block mb-1 opacity-60 tracking-widest">_ИТОГО_</span>
+                        <div className="text-2xl font-bold text-emerald-400 coding-font tracking-tighter tabular-nums">
+                            {e.total?.toLocaleString() || '0'} <span className="text-sm font-normal opacity-50">₽</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -183,12 +152,10 @@ const EntryCard: React.FC<{
     );
 };
 
-const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, isOnline, onSyncRequested, initialAction, activeTab }) => {
+const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, activeTab, onDataChange }) => {
   const [entries, setEntries] = useState<Entry[]>([]);
-  const [isRecording, setIsRecording] = useState(false);
   const [editingEntry, setEditingEntry] = useState<Entry | null>(null);
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const editorFileInputRef = useRef<HTMLInputElement>(null);
 
   const loadEntries = async () => {
@@ -200,20 +167,14 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, isOnline, onSync
 
   useEffect(() => {
     loadEntries();
-    const interval = setInterval(loadEntries, 3000);
-    return () => clearInterval(interval);
   }, [project.id]);
-
-  useEffect(() => {
-    if (initialAction === 'photo') fileInputRef.current?.click();
-    if (initialAction === 'voice') handleVoiceInput();
-  }, [initialAction]);
 
   const handleEntryTypeToggle = async (id: string) => {
     const entry = entries.find(e => e.id === id);
     if (entry) {
       await saveEntry({ ...entry, type: entry.type === EntryType.MATERIAL ? EntryType.LABOR : EntryType.MATERIAL });
       await loadEntries();
+      onDataChange();
     }
   };
 
@@ -221,62 +182,8 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, isOnline, onSync
     if (window.confirm("Удалить навсегда?")) {
       await deleteEntry(id);
       await loadEntries();
+      onDataChange();
     }
-  };
-
-  const handleRetryEntry = async (entry: Entry) => {
-    // Reset state and re-queue
-    const updatedEntry = { ...entry, processed: false, error: undefined, name: entry.images ? 'Анализ чека...' : 'Разбор голоса...' };
-    await saveEntry(updatedEntry);
-    
-    const payload = entry.images ? entry.images[0] : (entry.voiceTranscript || '');
-    const type = entry.images ? 'PHOTO' : 'VOICE';
-    
-    await addToSyncQueue({ id: generateId(), entryId: entry.id, type: type as 'PHOTO' | 'VOICE', payload });
-    onSyncRequested();
-    await loadEntries();
-  };
-
-  const handleVoiceInput = () => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) return alert("Голос не поддерживается в этом браузере.");
-    const recognition = new SpeechRecognition();
-    recognition.lang = 'ru-RU';
-    recognition.onstart = () => setIsRecording(true);
-    recognition.onend = () => setIsRecording(false);
-    recognition.onresult = async (event: any) => {
-      const transcript = event.results[0][0].transcript;
-      const placeholder: Entry = {
-        id: generateId(), projectId: project.id, type: activeTab, name: 'Разбор голоса...',
-        quantity: null, unit: null, price: null, total: null, vendor: null,
-        date: Date.now(), processed: false, archived: false, voiceTranscript: transcript
-      };
-      await saveEntry(placeholder);
-      await addToSyncQueue({ id: generateId(), entryId: placeholder.id, type: 'VOICE', payload: transcript });
-      onSyncRequested();
-      await loadEntries();
-    };
-    recognition.start();
-  };
-
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const base64 = (reader.result as string).split(',')[1];
-      const newEntry: Entry = {
-        id: generateId(), projectId: project.id, type: activeTab,
-        name: 'Анализ чека...', quantity: null, unit: null, price: null, total: null, vendor: null,
-        date: Date.now(), images: [base64], processed: false, archived: false
-      };
-      await saveEntry(newEntry);
-      await addToSyncQueue({ id: generateId(), entryId: newEntry.id, type: 'PHOTO', payload: base64 });
-      onSyncRequested();
-      await loadEntries();
-    };
-    reader.readAsDataURL(file);
-    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const handleEditorPhotoAdd = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -303,7 +210,7 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, isOnline, onSync
     const newEntry: Entry = {
       id: generateId(), projectId: project.id, type: activeTab,
       name: '', quantity: 1, unit: 'шт', price: 0, total: 0, vendor: '',
-      date: Date.now(), processed: true, archived: false
+      date: Date.now(), archived: false
     };
     await saveEntry(newEntry);
     setEditingEntry(newEntry);
@@ -320,21 +227,13 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, isOnline, onSync
               onSelect={setEditingEntry} 
               onPermanentDelete={handleEntryPermanentDelete} 
               onTypeToggle={handleEntryTypeToggle} 
-              onRetry={handleRetryEntry}
             />
         ))}
       </div>
 
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-slate-950/95 backdrop-blur-2xl border-t border-slate-800 flex justify-center gap-4 z-40 shadow-2xl">
-          <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileUpload} />
-          <button onClick={() => fileInputRef.current?.click()} className="w-14 h-14 bg-slate-900 rounded-2xl text-cyan-400 border border-slate-800 flex items-center justify-center active:scale-90 shadow-lg shrink-0 hover:bg-slate-800 transition-colors">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812-1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><circle cx="12" cy="13" r="3" strokeWidth={2} /></svg>
-          </button>
-          <button onClick={handleVoiceInput} className={`w-14 h-14 shrink-0 transition-all ${isRecording ? 'bg-red-600 animate-pulse' : 'bg-slate-900 text-emerald-400 hover:bg-slate-800'} border border-slate-800 rounded-2xl flex items-center justify-center active:scale-90 shadow-lg`}>
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" strokeWidth={2}/></svg>
-          </button>
           <button onClick={addManualEntry} className="flex-1 bg-emerald-600 h-14 rounded-2xl font-bold text-white shadow-xl uppercase text-[11px] tracking-[0.2em] active:scale-95 transition-all hover:bg-emerald-500">
-            ДОБАВИТЬ
+            ДОБАВИТЬ ПОЗИЦИЮ
           </button>
       </div>
 
@@ -351,16 +250,6 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, isOnline, onSync
                     </button>
                 </div>
              </div>
-
-             {editingEntry.error && (
-               <div className="p-4 bg-red-950/30 border border-red-500/30 rounded-2xl flex items-start gap-3">
-                  <svg className="w-5 h-5 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                  <div className="text-xs text-red-300 font-medium leading-relaxed">
-                     <span className="font-bold block mb-1">ОШИБКА АНАЛИЗА:</span>
-                     {editingEntry.error}
-                  </div>
-               </div>
-             )}
 
              <div className="space-y-4">
                 <div className="space-y-1">
@@ -409,7 +298,7 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, isOnline, onSync
 
              <div className="flex gap-4 pt-4">
                 <button onClick={() => setEditingEntry(null)} className="flex-1 bg-slate-800 py-4 rounded-2xl font-bold text-slate-400 uppercase text-xs hover:bg-slate-700 transition-colors">Отмена</button>
-                <button onClick={async () => { await saveEntry({...editingEntry, total: (editingEntry.quantity || 0) * (editingEntry.price || 0), error: undefined}); setEditingEntry(null); loadEntries(); }} className="flex-1 bg-emerald-600 py-4 rounded-2xl font-bold text-white uppercase text-xs hover:bg-emerald-500 transition-colors shadow-lg shadow-emerald-950/20">Сохранить</button>
+                <button onClick={async () => { await saveEntry({...editingEntry, total: (editingEntry.quantity || 0) * (editingEntry.price || 0)}); setEditingEntry(null); loadEntries(); onDataChange(); }} className="flex-1 bg-emerald-600 py-4 rounded-2xl font-bold text-white uppercase text-xs hover:bg-emerald-500 transition-colors shadow-lg shadow-emerald-950/20">Сохранить</button>
              </div>
           </div>
         </div>

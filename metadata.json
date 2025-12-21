@@ -1,8 +1,7 @@
 {
-  "name": "EstimatAI",
-  "description": "An offline-first construction management PWA with AI-powered material and labor tracking via photo, voice, and manual input.",
+  "name": "BuildFlow",
+  "description": "An offline-first construction management PWA for manual material and labor tracking.",
   "requestFramePermissions": [
-    "camera",
-    "microphone"
+    "camera"
   ]
 }

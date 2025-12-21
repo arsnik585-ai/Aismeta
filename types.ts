@@ -15,11 +15,8 @@ export interface Entry {
   total: number | null;
   vendor: string | null;
   date: number;
-  images?: string[]; // Массив строк base64
-  voiceTranscript?: string;
-  processed: boolean;
+  images?: string[]; // Array of base64 strings
   archived?: boolean;
-  error?: string;
 }
 
 export interface Project {
@@ -28,11 +25,4 @@ export interface Project {
   address: string;
   createdAt: number;
   archived?: boolean;
-}
-
-export interface SyncQueueItem {
-  id: string;
-  entryId: string;
-  type: 'PHOTO' | 'VOICE';
-  payload: string; // base64 или текст
 }
