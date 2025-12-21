@@ -1,4 +1,3 @@
-
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
@@ -6,11 +5,8 @@ import App from './App';
 // Service Worker Registration for PWA / Offline functionality
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    // Calculate an absolute path for sw.js based on the current origin to avoid registration failures 
-    // caused by origin mismatch in proxied or sandboxed environments like AI Studio.
-    const swPath = new URL('./sw.js', window.location.href).pathname;
-
-    navigator.serviceWorker.register(swPath, { scope: './' })
+    // Using simple relative path to avoid "Invalid URL" errors in sandboxed/proxied environments
+    navigator.serviceWorker.register('./sw.js', { scope: './' })
       .then(reg => {
         console.log('[PWA] Service Worker registered successfully');
         
@@ -28,7 +24,6 @@ if ('serviceWorker' in navigator) {
       })
       .catch(err => {
         // Log warning but don't break the app experience. 
-        // Cross-origin restrictions in sandboxes often prevent Service Worker registration.
         console.warn('[PWA] Service Worker registration skipped or failed:', err.message);
       });
   });

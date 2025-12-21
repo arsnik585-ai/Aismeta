@@ -1,8 +1,6 @@
-
 const CACHE_NAME = 'smeta-v2';
 
 // Список ресурсов для предварительного кэширования (App Shell)
-// Только реально существующие и доступные в браузере файлы
 const STATIC_ASSETS = [
   './',
   'index.html',
@@ -12,8 +10,7 @@ const STATIC_ASSETS = [
   // Кэшируем основные зависимости из importmap
   'https://esm.sh/react@^19.2.3',
   'https://esm.sh/react-dom@^19.2.3',
-  'https://esm.sh/react-dom@^19.2.3/client',
-  'https://esm.sh/@google/genai@^1.34.0'
+  'https://esm.sh/react-dom@^19.2.3/client'
 ];
 
 self.addEventListener('install', (event) => {
@@ -41,23 +38,27 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   const { request } = event;
-  const url = new URL(request.url);
+  
+  let url;
+  try {
+    url = new URL(request.url);
+  } catch (e) {
+    // If URL is invalid (e.g. non-standard protocol), bypass caching logic
+    return;
+  }
 
-  // Не кэшируем API запросы (они требуют интернета по определению)
+  // Не кэшируем API запросы
   if (url.pathname.includes('/api/')) {
     return;
   }
 
   event.respondWith(
     caches.match(request).then((cachedResponse) => {
-      // Возвращаем из кэша, если есть
       if (cachedResponse) {
         return cachedResponse;
       }
 
-      // Если нет в кэше, идем в сеть
       return fetch(request).then((networkResponse) => {
-        // Кэшируем только успешные GET запросы
         if (
           request.method === 'GET' && 
           networkResponse.status === 200 && 
@@ -70,7 +71,6 @@ self.addEventListener('fetch', (event) => {
         }
         return networkResponse;
       }).catch(() => {
-        // Если сеть недоступна (Airplane Mode) и это навигация — отдаем корень
         if (request.mode === 'navigate') {
           return caches.match('./') || caches.match('index.html');
         }

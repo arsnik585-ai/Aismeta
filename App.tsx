@@ -168,7 +168,7 @@ const App: React.FC = () => {
             ${renderSection('РАБОТЫ', data.entries.filter(e => e.type === EntryType.LABOR))}
 
             <footer style="text-align: center; margin-top: 60px; padding-top: 24px; border-top: 1px solid #f1f5f9; font-size: 0.8em; color: #94a3b8;">
-              Отчет подготовлен в приложении <strong>smeta AI</strong>
+              Отчет подготовлен в приложении <strong>smeta</strong>
             </footer>
           </div>
         </body>
@@ -178,7 +178,6 @@ const App: React.FC = () => {
       fileName = `${project.name}_смета.html`;
     }
 
-    // Modern Sharing (Mobile first)
     if (navigator.canShare && navigator.canShare({ files: [new File([blob], fileName, { type: blob.type })] })) {
       try {
         const file = new File([blob], fileName, { type: blob.type });
@@ -193,7 +192,6 @@ const App: React.FC = () => {
       }
     }
 
-    // Fallback: Classic Download
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;

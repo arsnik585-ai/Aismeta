@@ -1,8 +1,8 @@
 
 {
-  "name": "smeta AI",
+  "name": "smeta",
   "short_name": "smeta",
-  "description": "Умная строительная смета с ИИ",
+  "description": "Умная строительная смета",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#020617",
