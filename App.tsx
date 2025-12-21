@@ -99,7 +99,6 @@ const App: React.FC = () => {
                 <tr>
                   <td>
                     <div class="entry-name">${e.name || 'Без названия'}</div>
-                    <div class="entry-vendor">${e.vendor || ''}</div>
                     ${e.images && e.images.length > 0 ? `
                       <div class="photo-grid">
                         ${e.images.map(img => `<img src="data:image/jpeg;base64,${img}" />`).join('')}
@@ -139,7 +138,6 @@ const App: React.FC = () => {
             th { text-align: left; background: #f1f5f9; padding: 8px; font-size: 0.7em; text-transform: uppercase; color: #64748b; }
             td { padding: 10px 8px; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
             .entry-name { font-weight: 600; font-size: 1.05em; color: #0f172a; }
-            .entry-vendor { font-size: 0.8em; color: #94a3b8; margin-top: 2px; }
             .photo-grid { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
             .photo-grid img { width: 60px; height: 60px; object-fit: cover; border-radius: 4px; border: 1px solid #e2e8f0; }
             .nowrap { white-space: nowrap; }

@@ -13,7 +13,6 @@ export interface Entry {
   unit: string | null;
   price: number | null;
   total: number | null;
-  vendor: string | null;
   date: number;
   images?: string[]; // Array of base64 strings
   archived?: boolean;

@@ -12,7 +12,6 @@ interface ProjectDetailProps {
 
 const COMMON_UNITS = ['шт', 'м²', 'м³', 'м.п.', 'кг', 'т', 'компл.', 'усл. ед.', 'час', 'смена'];
 
-// Helper to compress image
 const compressImage = (base64Str: string): Promise<string> => {
     return new Promise((resolve) => {
         const img = new Image();
@@ -94,41 +93,34 @@ const EntryCard: React.FC<{
     };
 
     return (
-        <div className="bg-slate-900 border border-slate-800 rounded-[1.5rem] p-3.5 shadow-lg space-y-3 relative group">
-            {/* Header */}
-            <div className="flex justify-between items-start gap-2">
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-2 shadow-md space-y-1 relative group">
+            <div className="flex justify-between items-start gap-1">
                 <div className="flex-1 min-w-0">
                     <textarea 
                         value={e.name}
                         onChange={(evt) => handleChange({ name: evt.target.value })}
                         placeholder="Наименование..."
                         rows={1}
-                        className="w-full bg-transparent text-sm text-white font-bold coding-font uppercase outline-none focus:text-emerald-400 placeholder:text-slate-700 resize-none overflow-hidden leading-snug"
+                        className="w-full bg-transparent text-[13px] text-white font-bold coding-font uppercase outline-none focus:text-emerald-400 placeholder:text-slate-700 resize-none overflow-hidden leading-tight"
                         onInput={(evt) => {
                             const target = evt.target as HTMLTextAreaElement;
                             target.style.height = 'auto';
                             target.style.height = target.scrollHeight + 'px';
                         }}
                     />
-                    <input 
-                        value={e.vendor || ''}
-                        onChange={(evt) => handleChange({ vendor: evt.target.value })}
-                        placeholder="Поставщик / Мастер"
-                        className="w-full bg-transparent text-[9px] text-cyan-500 font-mono uppercase outline-none placeholder:text-slate-800 mt-0.5"
-                    />
                 </div>
                 
                 <div className="relative" ref={menuRef}>
-                    <button onClick={() => setShowMenu(!showMenu)} className="p-1 text-slate-700 hover:text-white transition-colors">
+                    <button onClick={() => setShowMenu(!showMenu)} className="p-0.5 text-slate-700 hover:text-white transition-colors">
                         <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" /></svg>
                     </button>
                     {showMenu && (
-                        <div className="absolute right-0 top-7 w-36 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl py-1 z-20 animate-in fade-in zoom-in-95 duration-100 origin-top-right">
-                            <button onClick={() => { onTypeToggle(e.id); setShowMenu(false); }} className="w-full text-left px-3 py-1.5 text-[9px] font-bold text-slate-300 hover:bg-slate-700 uppercase tracking-widest flex items-center gap-2">
+                        <div className="absolute right-0 top-5 w-32 bg-slate-800 border border-slate-700 rounded-lg shadow-2xl py-1 z-20 animate-in fade-in zoom-in-95 duration-75 origin-top-right">
+                            <button onClick={() => { onTypeToggle(e.id); setShowMenu(false); }} className="w-full text-left px-2 py-1.5 text-[8px] font-bold text-slate-300 hover:bg-slate-700 uppercase tracking-widest flex items-center gap-1.5">
                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" strokeWidth={2}/></svg>
                                 ТИП
                             </button>
-                            <button onClick={() => { if(confirm('Удалить?')) onDelete(e.id); setShowMenu(false); }} className="w-full text-left px-3 py-1.5 text-[9px] font-bold text-red-400 hover:bg-red-950/30 uppercase tracking-widest flex items-center gap-2">
+                            <button onClick={() => { if(confirm('Удалить?')) onDelete(e.id); setShowMenu(false); }} className="w-full text-left px-2 py-1.5 text-[8px] font-bold text-red-400 hover:bg-red-950/30 uppercase tracking-widest flex items-center gap-1.5">
                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7" strokeWidth={2}/></svg>
                                 УДАЛИТЬ
                             </button>
@@ -137,51 +129,49 @@ const EntryCard: React.FC<{
                 </div>
             </div>
 
-            {/* Inputs Grid - Compact */}
-            <div className="grid grid-cols-3 gap-2 bg-slate-950/40 p-2 rounded-xl border border-slate-800/40">
-                <div className="space-y-0.5">
-                    <span className="block text-[7px] text-slate-600 font-mono uppercase tracking-tighter">Кол-во</span>
+            <div className="grid grid-cols-3 gap-1 bg-slate-950/40 p-1 rounded-lg border border-slate-800/40">
+                <div className="space-y-0">
+                    <span className="block text-[6px] text-slate-600 font-mono uppercase tracking-tighter">Кол-во</span>
                     <input 
                         type="number" 
                         value={e.quantity === null ? '' : e.quantity}
                         onChange={(evt) => handleChange({ quantity: evt.target.value === '' ? null : parseFloat(evt.target.value) })}
-                        className="w-full bg-transparent text-xs text-white font-bold outline-none tabular-nums"
+                        className="w-full bg-transparent text-[10px] text-white font-bold outline-none tabular-nums"
                         placeholder="0"
                     />
                 </div>
-                <div className="space-y-0.5">
-                    <span className="block text-[7px] text-slate-600 font-mono uppercase tracking-tighter">Ед.изм</span>
+                <div className="space-y-0">
+                    <span className="block text-[6px] text-slate-600 font-mono uppercase tracking-tighter">Ед.изм</span>
                     <input 
                         list={`units-${e.id}`}
                         value={e.unit || ''}
                         onChange={(evt) => handleChange({ unit: evt.target.value })}
-                        className="w-full bg-transparent text-xs text-white font-bold outline-none"
+                        className="w-full bg-transparent text-[10px] text-white font-bold outline-none"
                         placeholder="шт"
                     />
                     <datalist id={`units-${e.id}`}>
                         {COMMON_UNITS.map(u => <option key={u} value={u} />)}
                     </datalist>
                 </div>
-                <div className="space-y-0.5">
-                    <span className="block text-[7px] text-slate-600 font-mono uppercase tracking-tighter">Цена (₽)</span>
+                <div className="space-y-0">
+                    <span className="block text-[6px] text-slate-600 font-mono uppercase tracking-tighter">Цена (₽)</span>
                     <input 
                         type="number" 
                         value={e.price === null ? '' : e.price}
                         onChange={(evt) => handleChange({ price: evt.target.value === '' ? null : parseFloat(evt.target.value) })}
-                        className="w-full bg-transparent text-xs text-emerald-500 font-bold outline-none tabular-nums"
+                        className="w-full bg-transparent text-[10px] text-emerald-500 font-bold outline-none tabular-nums"
                         placeholder="0"
                     />
                 </div>
             </div>
 
-            {/* Photos & Total */}
-            <div className="flex items-center gap-2">
-                <div className="flex-1 flex gap-1.5 overflow-x-auto no-scrollbar items-center min-h-[40px]">
+            <div className="flex items-center gap-1">
+                <div className="flex-1 flex gap-1 overflow-x-auto no-scrollbar items-center min-h-[32px]">
                     <button 
                         onClick={() => fileInputRef.current?.click()}
-                        className="w-10 h-10 shrink-0 flex items-center justify-center rounded-lg bg-slate-950 text-slate-600 hover:text-emerald-500 border border-slate-800 border-dashed transition-all active:scale-90"
+                        className="w-8 h-8 shrink-0 flex items-center justify-center rounded-md bg-slate-950 text-slate-700 hover:text-emerald-500 border border-slate-800 border-dashed transition-all active:scale-90"
                     >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4" strokeWidth={2}/></svg>
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4" strokeWidth={2}/></svg>
                         <input type="file" ref={fileInputRef} onChange={handleAddPhoto} className="hidden" accept="image/*" />
                     </button>
                     {e.images?.map((img, idx) => (
@@ -189,21 +179,21 @@ const EntryCard: React.FC<{
                             <img 
                                 src={`data:image/jpeg;base64,${img}`} 
                                 onClick={() => onShowFullscreen(img)}
-                                className="w-10 h-10 object-cover rounded-lg border border-slate-800 shadow-sm cursor-pointer hover:border-emerald-500 transition-colors"
+                                className="w-8 h-8 object-cover rounded-md border border-slate-800 shadow-sm cursor-pointer"
                             />
                             <button 
                                 onClick={() => removePhoto(idx)}
                                 className="absolute -top-1 -right-1 bg-red-600 text-white rounded-full p-0.5 shadow-lg"
                             >
-                                <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" strokeWidth={3}/></svg>
+                                <svg className="w-2 h-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" strokeWidth={3}/></svg>
                             </button>
                         </div>
                     ))}
                 </div>
                 <div className="text-right shrink-0">
-                    <span className="block text-[7px] text-slate-600 font-mono uppercase tracking-widest">ИТОГО</span>
-                    <div className="text-lg font-bold text-white coding-font tabular-nums tracking-tighter">
-                        {(e.total || 0).toLocaleString()} <span className="text-[9px] opacity-40 font-normal">₽</span>
+                    <span className="block text-[5px] text-slate-600 font-mono uppercase tracking-widest leading-none">ИТОГО</span>
+                    <div className="text-sm font-bold text-white coding-font tabular-nums tracking-tighter leading-none mt-0.5">
+                        {(e.total || 0).toLocaleString()} <span className="text-[7px] opacity-40 font-normal">₽</span>
                     </div>
                 </div>
             </div>
@@ -258,7 +248,6 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, activeTab, onDat
       unit: '',
       price: null,
       total: 0,
-      vendor: '',
       date: Date.now(),
       archived: false
     };
@@ -272,8 +261,8 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, activeTab, onDat
     .reduce((sum, e) => sum + (e.total || 0), 0);
 
   return (
-    <div className="flex flex-col h-full pt-1">
-      <div className="flex-1 overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-3 pb-36 px-1 no-scrollbar">
+    <div className="flex flex-col h-full pt-0.5">
+      <div className="flex-1 overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-1.5 pb-28 px-1 no-scrollbar">
         {entries.filter(e => e.type === activeTab).map(e => (
             <EntryCard 
               key={e.id} 
@@ -285,29 +274,29 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, activeTab, onDat
             />
         ))}
         {entries.filter(e => e.type === activeTab).length === 0 && (
-            <div className="col-span-full py-16 text-center opacity-10 border-2 border-dashed border-slate-800 rounded-[2rem] flex flex-col items-center gap-3">
-                <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4" strokeWidth={1}/></svg>
-                <p className="text-[9px] uppercase font-mono tracking-widest">Список пуст</p>
+            <div className="col-span-full py-8 text-center opacity-10 border border-dashed border-slate-800 rounded-lg flex flex-col items-center gap-1.5">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4" strokeWidth={1}/></svg>
+                <p className="text-[7px] uppercase font-mono tracking-widest">Список пуст</p>
             </div>
         )}
       </div>
 
       <div 
-        className="fixed bottom-0 left-0 right-0 p-3 bg-slate-950/90 backdrop-blur-2xl border-t border-slate-800/60 flex items-center justify-between z-40 shadow-[0_-10px_40px_rgba(0,0,0,0.6)]"
-        style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}
+        className="fixed bottom-0 left-0 right-0 p-2 bg-slate-950/90 backdrop-blur-2xl border-t border-slate-800/60 flex items-center justify-between z-40 shadow-[0_-10px_40px_rgba(0,0,0,0.6)]"
+        style={{ paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom))' }}
       >
           <div className="flex flex-col pl-2">
-              <span className="text-[7px] text-slate-500 font-mono uppercase tracking-[0.2em] mb-0.5">_ИТОГО {activeTab === EntryType.MATERIAL ? 'МАТ' : 'РАБ'}_</span>
-              <div className="text-xl font-bold text-white coding-font tracking-tighter tabular-nums leading-none">
-                  {sectionTotal.toLocaleString()} <span className="text-[10px] text-emerald-500 font-normal">₽</span>
+              <span className="text-[6px] text-slate-500 font-mono uppercase tracking-[0.2em] mb-0.5">_ИТОГО {activeTab === EntryType.MATERIAL ? 'МАТ' : 'РАБ'}_</span>
+              <div className="text-base font-bold text-white coding-font tracking-tighter tabular-nums leading-none">
+                  {sectionTotal.toLocaleString()} <span className="text-[9px] text-emerald-500 font-normal">₽</span>
               </div>
           </div>
           
           <button 
             onClick={addManualEntry} 
-            className="bg-emerald-600 h-12 px-6 rounded-xl font-bold text-white shadow-lg uppercase text-[10px] tracking-widest active:scale-95 transition-all flex items-center gap-2"
+            className="bg-emerald-600 h-10 px-6 rounded-lg font-bold text-white shadow-lg uppercase text-[8px] tracking-widest active:scale-95 transition-all flex items-center gap-2"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4" strokeWidth={3}/></svg>
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4" strokeWidth={3}/></svg>
             ДОБАВИТЬ
           </button>
       </div>
