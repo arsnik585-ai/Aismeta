@@ -1,14 +1,14 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 
 export const onRequestPost = async (context: { request: Request }) => {
   const { request } = context;
-  const API_KEY = "AIzaSyAJxr6Wob4etFjLsjTzSTXn9v52mgqa9iQ";
 
   try {
     const body = await request.json() as { action: string; payload: string };
     const { action, payload } = body;
 
-    const ai = new GoogleGenAI({ apiKey: API_KEY });
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     
     const SYSTEM_INSTRUCTION = `Вы — сметчик BuildFlow. Преобразуйте ввод в JSON массив позиций MATERIAL/LABOR. Цены в RUB.`;
 
