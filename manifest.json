@@ -1,10 +1,10 @@
 {
-  "name": "EstimatAI",
-  "short_name": "EstimatAI",
-  "description": "Автономная строительная смета с ИИ",
+  "name": "BuildFlow AI",
+  "short_name": "BuildFlow",
+  "description": "Умная строительная смета с ИИ",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0f172a",
+  "background_color": "#020617",
   "theme_color": "#10b981",
   "icons": [
     {

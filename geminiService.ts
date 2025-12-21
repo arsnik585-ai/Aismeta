@@ -1,15 +1,13 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
-// ВАЖНО: Строка process.env.API_KEY будет заменена на реальный ключ во время сборки в Netlify
-// Если после деплоя вы видите ошибку 'API_KEY is not defined', значит в Netlify не была запущена сборка (Clear cache and deploy).
 const getApiKey = () => {
+  // Эта строка будет заменена на реальный ключ во время деплоя через sed
   return process.env.API_KEY;
 };
 
-const SYSTEM_INSTRUCTION = `Вы — ИИ-ассистент BuildFlow. Эксперт в строительных сметах.
-Ваша задача: извлекать данные о материалах и работах.
-Типы: MATERIAL или LABOR.
-Обязательно вычисляй total.`;
+const SYSTEM_INSTRUCTION = `Вы — эксперт BuildFlow AI. 
+Ваша задача: извлекать строительные материалы и работы из чеков или голоса.
+Верни строго массив объектов JSON.`;
 
 const ITEM_SCHEMA = {
   type: Type.OBJECT,
@@ -25,11 +23,6 @@ const ITEM_SCHEMA = {
   required: ['name', 'type'],
 };
 
-const RESPONSE_SCHEMA = {
-  type: Type.ARRAY,
-  items: ITEM_SCHEMA
-};
-
 export const processImage = async (base64Image: string) => {
   const apiKey = getApiKey();
   const ai = new GoogleGenAI({ apiKey });
@@ -40,20 +33,22 @@ export const processImage = async (base64Image: string) => {
       contents: {
         parts: [
           { inlineData: { mimeType: 'image/jpeg', data: base64Image } },
-          { text: "Извлеки строительные позиции из чека в JSON." }
+          { text: "Извлеки все товары и цены в JSON массив." }
         ]
       },
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
         responseMimeType: "application/json",
-        responseSchema: RESPONSE_SCHEMA,
+        responseSchema: {
+          type: Type.ARRAY,
+          items: ITEM_SCHEMA
+        },
       }
     });
-
     return JSON.parse(response.text || "[]");
-  } catch (err: any) {
-    console.error("AI Error:", err);
-    throw new Error("Ошибка ИИ. Проверьте лимиты ключа или деплой.");
+  } catch (err) {
+    console.error("Gemini Image Error:", err);
+    throw err;
   }
 };
 
@@ -65,18 +60,20 @@ export const processVoice = async (transcript: string) => {
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: {
-        parts: [{ text: `Разбери заметку: "${transcript}"` }]
+        parts: [{ text: `Разбери эту строительную заметку: ${transcript}` }]
       },
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
         responseMimeType: "application/json",
-        responseSchema: RESPONSE_SCHEMA,
+        responseSchema: {
+          type: Type.ARRAY,
+          items: ITEM_SCHEMA
+        },
       }
     });
-
     return JSON.parse(response.text || "[]");
-  } catch (err: any) {
-    console.error("AI Error:", err);
-    throw new Error("Ошибка разбора голоса.");
+  } catch (err) {
+    console.error("Gemini Voice Error:", err);
+    throw err;
   }
 };
