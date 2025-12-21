@@ -2,8 +2,10 @@ import { GoogleGenAI, Type } from "@google/genai";
 
 /**
  * BuildFlow AI Service
- * Конфигурация с встроенным ключом для исправления ошибки инициализации в браузере.
+ * API Key is hardcoded as requested by the user to ensure immediate functionality.
  */
+
+const API_KEY = "AIzaSyAJxr6Wob4etFjLsjTzSTXn9v52mgqa9iQ";
 
 const SYSTEM_INSTRUCTION = `Вы — ведущий инженер BuildFlow AI. 
 Ваша задача: извлекать строительные материалы (MATERIAL) и работы (LABOR) из чеков или голосовых заметок.
@@ -29,8 +31,7 @@ const ITEM_SCHEMA = {
 };
 
 export const processImage = async (base64Image: string) => {
-  // Используем предоставленный ключ напрямую
-  const ai = new GoogleGenAI({ apiKey: "AIzaSyAJxr6Wob4etFjLsjTzSTXn9v52mgqa9iQ" });
+  const ai = new GoogleGenAI({ apiKey: API_KEY });
   
   try {
     const response = await ai.models.generateContent({
@@ -58,7 +59,7 @@ export const processImage = async (base64Image: string) => {
 };
 
 export const processVoice = async (transcript: string) => {
-  const ai = new GoogleGenAI({ apiKey: "AIzaSyAJxr6Wob4etFjLsjTzSTXn9v52mgqa9iQ" });
+  const ai = new GoogleGenAI({ apiKey: API_KEY });
   
   try {
     const response = await ai.models.generateContent({
