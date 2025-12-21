@@ -7,11 +7,10 @@ interface Env {
 export const onRequestPost = async (context: { request: Request; env: Env }) => {
   const { request, env } = context;
 
+  // Проверка ключа
   if (!env.API_KEY) {
     return new Response(
-      JSON.stringify({ 
-        error: "API_KEY не настроен в переменных окружения Cloudflare." 
-      }), 
+      JSON.stringify({ error: "Критическая ошибка: API_KEY не настроен в Cloudflare." }), 
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
@@ -21,44 +20,49 @@ export const onRequestPost = async (context: { request: Request; env: Env }) => 
 
     const ai = new GoogleGenAI({ apiKey: env.API_KEY });
     
-    const SYSTEM_INSTRUCTION = `Вы — эксперт BuildFlow AI. 
-    Ваша задача: извлекать строительные материалы и работы из чеков (фото) или голоса.
-    Обязательно верни массив объектов JSON. Каждое поле должно быть заполнено на основе контекста.
-    Если количество или цена не указаны, верни 0 или null (но не пропускай поля).
-    Тип (type) должен быть строго 'MATERIAL' или 'LABOR'.`;
+    const SYSTEM_INSTRUCTION = `Вы — ведущий инженер BuildFlow AI. 
+    Ваша задача: извлекать строительные материалы (MATERIAL) и работы (LABOR) из чеков или голосовых заметок.
+    Верни СТРОГО массив объектов JSON. Не добавляй никаких комментариев или markdown-разметки.
+    Если цена или количество не найдены, установи их в 0.
+    Поле 'type' может быть только 'MATERIAL' или 'LABOR'.`;
 
     const ITEM_SCHEMA = {
       type: Type.OBJECT,
       properties: {
-        name: { type: Type.STRING, description: "Наименование товара или услуги" },
-        type: { type: Type.STRING, enum: ['MATERIAL', 'LABOR'], description: "Тип: MATERIAL (материал) или LABOR (работа/услуга)" },
+        name: { type: Type.STRING, description: "Название позиции" },
+        type: { type: Type.STRING, enum: ['MATERIAL', 'LABOR'], description: "Тип: материал или работа" },
         quantity: { type: Type.NUMBER, description: "Количество" },
-        unit: { type: Type.STRING, description: "Единица измерения (шт, м2, упак и т.д.)" },
-        price: { type: Type.NUMBER, description: "Цена за единицу" },
-        total: { type: Type.NUMBER, description: "Итоговая сумма по позиции" },
-        vendor: { type: Type.STRING, description: "Продавец или исполнитель" },
+        unit: { type: Type.STRING, description: "Единица измерения" },
+        price: { type: Type.NUMBER, description: "Цена за ед." },
+        total: { type: Type.NUMBER, description: "Итоговая сумма" },
+        vendor: { type: Type.STRING, description: "Магазин или исполнитель" },
       },
       required: ['name', 'type'],
-      propertyOrdering: ["name", "type", "quantity", "unit", "price", "total", "vendor"]
     };
 
     const modelName = 'gemini-3-flash-preview';
-    let parts: any[] = [];
+    let contents;
 
     if (action === 'image') {
-      parts = [
-        { inlineData: { mimeType: 'image/jpeg', data: payload } },
-        { text: "Распознай все позиции в этом чеке и сформируй список в формате JSON." }
-      ];
+      contents = {
+        role: 'user',
+        parts: [
+          { inlineData: { mimeType: 'image/jpeg', data: payload } },
+          { text: "Распознай все товары и услуги в этом документе и представь их в виде списка объектов JSON." }
+        ]
+      };
     } else {
-      parts = [
-        { text: `Распознай строительные позиции из этой заметки: "${payload}". Сформируй JSON список.` }
-      ];
+      contents = {
+        role: 'user',
+        parts: [
+          { text: `Разбери эту строительную заметку: "${payload}". Извлеки список материалов и работ в формате JSON.` }
+        ]
+      };
     }
 
     const response = await ai.models.generateContent({
       model: modelName,
-      contents: [{ role: 'user', parts }],
+      contents: [contents],
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
         responseMimeType: "application/json",
@@ -69,19 +73,17 @@ export const onRequestPost = async (context: { request: Request; env: Env }) => 
       }
     });
 
-    const text = response.text;
-    if (!text) {
-      throw new Error("Модель вернула пустой ответ");
-    }
+    const output = response.text;
+    if (!output) throw new Error("ИИ вернул пустой результат");
 
-    return new Response(text, {
+    return new Response(output, {
       headers: { "Content-Type": "application/json" }
     });
 
   } catch (err: any) {
-    console.error("Worker Error:", err);
+    console.error("Worker Execution Error:", err);
     return new Response(
-      JSON.stringify({ error: err.message || "Ошибка при обработке ИИ" }), 
+      JSON.stringify({ error: err.message || "Ошибка при обработке запроса ИИ" }), 
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }

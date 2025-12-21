@@ -62,36 +62,36 @@ const App: React.FC = () => {
     setIsSyncing(true);
     for (const item of queue) {
       try {
-        let items: any = [];
+        let aiResult: any;
         if (item.type === 'PHOTO') {
-          items = await processImage(item.payload);
+          aiResult = await processImage(item.payload);
         } else {
-          items = await processVoice(item.payload);
+          aiResult = await processVoice(item.payload);
         }
 
-        // Если ИИ вернул не массив, оборачиваем или выбрасываем ошибку
-        const finalItems = Array.isArray(items) ? items : [];
+        // Гарантируем, что работаем с массивом
+        const resultItems = Array.isArray(aiResult) ? aiResult : (aiResult.items || []);
         
-        // Сначала удаляем временную карточку "Анализ..."
+        if (resultItems.length === 0) {
+          throw new Error("ИИ не нашел позиций для сохранения.");
+        }
+
+        // Удаляем временную карточку только если получили результат
         await deleteEntry(item.entryId);
-        
-        if (finalItems.length === 0) {
-           throw new Error("ИИ не распознал ни одной позиции.");
-        }
 
-        for (const entryData of finalItems) {
+        for (const entryData of resultItems) {
           const newEntry: Entry = {
             id: generateId(),
             projectId: currentProject?.id || item.id.split('_')[0],
             date: Date.now(),
             processed: true,
             archived: false,
-            name: entryData.name || 'Без названия',
+            name: entryData.name || 'Распознанная позиция',
             type: entryData.type === 'LABOR' ? EntryType.LABOR : EntryType.MATERIAL,
             quantity: entryData.quantity || 0,
             unit: entryData.unit || 'шт',
             price: entryData.price || 0,
-            total: entryData.total || (entryData.quantity * entryData.price) || 0,
+            total: entryData.total || ((entryData.quantity || 0) * (entryData.price || 0)) || 0,
             vendor: entryData.vendor || null,
             images: item.type === 'PHOTO' ? [item.payload] : []
           };
@@ -100,9 +100,9 @@ const App: React.FC = () => {
 
         await removeFromSyncQueue(item.id);
       } catch (e: any) {
-        console.error("Sync Error:", item.id, e);
+        console.error("Sync Critical Error:", item.id, e);
         
-        // В случае ошибки обновляем временную запись, чтобы пользователь видел статус
+        // Помечаем существующую временную запись как ошибку
         const db = await initDB();
         const tx = db.transaction('entries', 'readwrite');
         const store = tx.objectStore('entries');
@@ -113,7 +113,7 @@ const App: React.FC = () => {
           if (entry) {
             entry.processed = true;
             entry.name = "Ошибка анализа";
-            entry.error = e.message || "Ошибка сервера ИИ";
+            entry.error = e.message || "Сбой связи с ИИ";
             store.put(entry);
           }
         };
