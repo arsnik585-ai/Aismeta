@@ -14,6 +14,7 @@ export interface Entry {
   price: number | null;
   total: number | null;
   date: number;
+  order?: number;
   images?: string[]; // Array of base64 strings
   archived?: boolean;
 }
@@ -23,5 +24,6 @@ export interface Project {
   name: string;
   address: string;
   createdAt: number;
+  order?: number;
   archived?: boolean;
 }

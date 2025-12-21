@@ -1,6 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Project } from '../types';
+import { saveProject } from '../db';
 
 interface DashboardProps {
   projects: Project[];
@@ -19,6 +20,7 @@ interface DashboardProps {
 
 const ProjectCard: React.FC<{
   p: Project;
+  index: number;
   mTotal: number;
   lTotal: number;
   onSelect: (p: Project) => void;
@@ -29,7 +31,11 @@ const ProjectCard: React.FC<{
   onDuplicate: (p: Project) => void;
   onQuickAction: (p: Project, action: string) => void;
   isArchivedView: boolean;
-}> = ({ p, mTotal, lTotal, onSelect, onArchiveToggle, onDelete, onRenameStart, onShareClick, onDuplicate, onQuickAction, isArchivedView }) => {
+  onDragStart: (e: React.DragEvent, index: number) => void;
+  onDragOver: (e: React.DragEvent, index: number) => void;
+  onDrop: (e: React.DragEvent, index: number) => void;
+  isDragged?: boolean;
+}> = ({ p, index, mTotal, lTotal, onSelect, onArchiveToggle, onDelete, onRenameStart, onShareClick, onDuplicate, onQuickAction, isArchivedView, onDragStart, onDragOver, onDrop, isDragged }) => {
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -49,7 +55,13 @@ const ProjectCard: React.FC<{
   };
 
   return (
-    <div className="relative rounded-xl bg-slate-950">
+    <div 
+      className={`relative rounded-xl bg-slate-950 transition-all duration-200 ${isDragged ? 'opacity-20 scale-95' : 'opacity-100'}`}
+      draggable
+      onDragStart={(e) => onDragStart(e, index)}
+      onDragOver={(e) => onDragOver(e, index)}
+      onDrop={(e) => onDrop(e, index)}
+    >
       <div 
         onClick={() => onSelect(p)}
         className={`bg-slate-900 border border-slate-800 p-2.5 rounded-xl transition-all cursor-pointer relative z-10 shadow-lg active:bg-slate-800 h-full flex flex-col justify-between ${isArchivedView ? 'opacity-90' : ''}`}
@@ -63,7 +75,7 @@ const ProjectCard: React.FC<{
             <div className="relative" ref={menuRef}>
               <button 
                 onClick={toggleMenu}
-                className="p-0.5 text-slate-600 hover:text-white transition-colors rounded hover:bg-slate-800"
+                className="p-0.5 text-slate-400 hover:text-white transition-colors rounded hover:bg-slate-800"
               >
                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
@@ -133,14 +145,14 @@ const ProjectCard: React.FC<{
         <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-800">
            <div className="text-left flex flex-col gap-0.5">
               <div className="leading-none">
-                <span className="inline-block text-[6px] text-slate-500 font-mono tracking-tighter uppercase mr-1">МАТ:</span>
+                <span className="inline-block text-[6px] text-slate-400 font-mono tracking-tighter uppercase mr-1">МАТ:</span>
                 <span className="text-[13px] font-bold text-emerald-500 coding-font tabular-nums">
                   {mTotal.toLocaleString()} 
                   <span className="text-[8px] font-normal ml-0.5 opacity-40">₽</span>
                 </span>
               </div>
               <div className="leading-none">
-                <span className="inline-block text-[6px] text-slate-500 font-mono tracking-tighter uppercase mr-1">РАБ:</span>
+                <span className="inline-block text-[6px] text-slate-400 font-mono tracking-tighter uppercase mr-1">РАБ:</span>
                 <span className="text-[13px] font-bold text-cyan-500 coding-font tabular-nums">
                   {lTotal.toLocaleString()} 
                   <span className="text-[8px] font-normal ml-0.5 opacity-40">₽</span>
@@ -169,7 +181,7 @@ const ProjectCard: React.FC<{
 };
 
 const Dashboard: React.FC<DashboardProps> = ({ 
-  projects, 
+  projects: initialProjects, 
   materialTotals,
   laborTotals,
   onProjectSelect, 
@@ -182,6 +194,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   onQuickAction,
   viewingArchive
 }) => {
+  const [projects, setProjects] = useState<Project[]>(initialProjects);
   const [isAdding, setIsAdding] = useState(false);
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
@@ -189,6 +202,39 @@ const Dashboard: React.FC<DashboardProps> = ({
   const [editNameValue, setEditNameValue] = useState('');
   const [editAddressValue, setEditAddressValue] = useState('');
   const [shareProjectModal, setShareProjectModal] = useState<Project | null>(null);
+  const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
+
+  useEffect(() => {
+    setProjects(initialProjects);
+  }, [initialProjects]);
+
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedIdx(index);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = async (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (draggedIdx === null || draggedIdx === index) return;
+
+    const updatedProjects = [...projects];
+    const [movedItem] = updatedProjects.splice(draggedIdx, 1);
+    updatedProjects.splice(index, 0, movedItem);
+
+    // Update orders
+    const finalized = updatedProjects.map((p, i) => ({ ...p, order: i }));
+    setProjects(finalized);
+    setDraggedIdx(null);
+
+    // Save orders to DB
+    for (const p of finalized) {
+      await saveProject(p);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -293,10 +339,11 @@ const Dashboard: React.FC<DashboardProps> = ({
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 pb-16">
-        {projects.length > 0 ? projects.map(p => (
+        {projects.length > 0 ? projects.map((p, idx) => (
           <ProjectCard 
             key={p.id}
             p={p}
+            index={idx}
             mTotal={materialTotals[p.id] || 0}
             lTotal={laborTotals[p.id] || 0}
             isArchivedView={viewingArchive}
@@ -307,6 +354,10 @@ const Dashboard: React.FC<DashboardProps> = ({
             onRenameStart={(project) => { setEditingId(project.id); setEditNameValue(project.name); setEditAddressValue(project.address); }}
             onShareClick={setShareProjectModal}
             onQuickAction={onQuickAction}
+            onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
+            isDragged={draggedIdx === idx}
           />
         )) : (
           <div className="col-span-full py-12 text-center opacity-20 flex flex-col items-center gap-3 border border-dashed border-slate-800 rounded-xl">

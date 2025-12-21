@@ -46,11 +46,16 @@ const compressImage = (base64Str: string): Promise<string> => {
 
 const EntryCard: React.FC<{
     e: Entry;
+    index: number;
     onUpdate: (updated: Entry) => void;
     onDelete: (id: string) => void;
     onTypeToggle: (id: string) => void;
     onShowFullscreen: (img: string) => void;
-}> = ({ e, onUpdate, onDelete, onTypeToggle, onShowFullscreen }) => {
+    onDragStart: (e: React.DragEvent, index: number) => void;
+    onDragOver: (e: React.DragEvent, index: number) => void;
+    onDrop: (e: React.DragEvent, index: number) => void;
+    isDragged?: boolean;
+}> = ({ e, index, onUpdate, onDelete, onTypeToggle, onShowFullscreen, onDragStart, onDragOver, onDrop, isDragged }) => {
     const [showMenu, setShowMenu] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -93,7 +98,13 @@ const EntryCard: React.FC<{
     };
 
     return (
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-2 shadow-md space-y-1 relative group">
+        <div 
+          className={`bg-slate-900 border border-slate-800 rounded-xl p-2 shadow-md space-y-1 relative group transition-all duration-200 ${isDragged ? 'opacity-20 scale-95' : 'opacity-100'}`}
+          draggable
+          onDragStart={(evt) => onDragStart(evt, index)}
+          onDragOver={(evt) => onDragOver(evt, index)}
+          onDrop={(evt) => onDrop(evt, index)}
+        >
             <div className="flex justify-between items-start gap-1">
                 <div className="flex-1 min-w-0">
                     <textarea 
@@ -101,7 +112,7 @@ const EntryCard: React.FC<{
                         onChange={(evt) => handleChange({ name: evt.target.value })}
                         placeholder="Наименование..."
                         rows={1}
-                        className="w-full bg-transparent text-[13px] text-white font-bold coding-font uppercase outline-none focus:text-emerald-400 placeholder:text-slate-700 resize-none overflow-hidden leading-tight"
+                        className="w-full bg-transparent text-[13px] text-white font-semibold outline-none focus:text-emerald-400 placeholder:text-slate-700 resize-none overflow-hidden leading-tight"
                         onInput={(evt) => {
                             const target = evt.target as HTMLTextAreaElement;
                             target.style.height = 'auto';
@@ -111,7 +122,7 @@ const EntryCard: React.FC<{
                 </div>
                 
                 <div className="relative" ref={menuRef}>
-                    <button onClick={() => setShowMenu(!showMenu)} className="p-0.5 text-slate-700 hover:text-white transition-colors">
+                    <button onClick={() => setShowMenu(!showMenu)} className="p-0.5 text-slate-400 hover:text-white transition-colors">
                         <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" /></svg>
                     </button>
                     {showMenu && (
@@ -131,22 +142,22 @@ const EntryCard: React.FC<{
 
             <div className="grid grid-cols-3 gap-1 bg-slate-950/40 p-1 rounded-lg border border-slate-800/40">
                 <div className="space-y-0">
-                    <span className="block text-[6px] text-slate-600 font-mono uppercase tracking-tighter">Кол-во</span>
+                    <span className="block text-[6px] text-slate-400 font-mono uppercase tracking-tighter">Кол-во</span>
                     <input 
                         type="number" 
                         value={e.quantity === null ? '' : e.quantity}
                         onChange={(evt) => handleChange({ quantity: evt.target.value === '' ? null : parseFloat(evt.target.value) })}
-                        className="w-full bg-transparent text-[10px] text-white font-bold outline-none tabular-nums"
+                        className="w-full bg-transparent text-[12px] text-white font-bold outline-none tabular-nums"
                         placeholder="0"
                     />
                 </div>
                 <div className="space-y-0">
-                    <span className="block text-[6px] text-slate-600 font-mono uppercase tracking-tighter">Ед.изм</span>
+                    <span className="block text-[6px] text-slate-400 font-mono uppercase tracking-tighter">Ед.изм</span>
                     <input 
                         list={`units-${e.id}`}
                         value={e.unit || ''}
                         onChange={(evt) => handleChange({ unit: evt.target.value })}
-                        className="w-full bg-transparent text-[10px] text-white font-bold outline-none"
+                        className="w-full bg-transparent text-[12px] text-white font-bold outline-none"
                         placeholder="шт"
                     />
                     <datalist id={`units-${e.id}`}>
@@ -154,12 +165,12 @@ const EntryCard: React.FC<{
                     </datalist>
                 </div>
                 <div className="space-y-0">
-                    <span className="block text-[6px] text-slate-600 font-mono uppercase tracking-tighter">Цена (₽)</span>
+                    <span className="block text-[6px] text-slate-400 font-mono uppercase tracking-tighter">Цена (₽)</span>
                     <input 
                         type="number" 
                         value={e.price === null ? '' : e.price}
                         onChange={(evt) => handleChange({ price: evt.target.value === '' ? null : parseFloat(evt.target.value) })}
-                        className="w-full bg-transparent text-[10px] text-emerald-500 font-bold outline-none tabular-nums"
+                        className="w-full bg-transparent text-[12px] text-emerald-500 font-bold outline-none tabular-nums"
                         placeholder="0"
                     />
                 </div>
@@ -169,7 +180,7 @@ const EntryCard: React.FC<{
                 <div className="flex-1 flex gap-1 overflow-x-auto no-scrollbar items-center min-h-[32px]">
                     <button 
                         onClick={() => fileInputRef.current?.click()}
-                        className="w-8 h-8 shrink-0 flex items-center justify-center rounded-md bg-slate-950 text-slate-700 hover:text-emerald-500 border border-slate-800 border-dashed transition-all active:scale-90"
+                        className="w-8 h-8 shrink-0 flex items-center justify-center rounded-md bg-slate-950 text-slate-400 hover:text-emerald-500 border border-slate-800 border-dashed transition-all active:scale-90"
                     >
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4" strokeWidth={2}/></svg>
                         <input type="file" ref={fileInputRef} onChange={handleAddPhoto} className="hidden" accept="image/*" />
@@ -191,8 +202,8 @@ const EntryCard: React.FC<{
                     ))}
                 </div>
                 <div className="text-right shrink-0">
-                    <span className="block text-[5px] text-slate-600 font-mono uppercase tracking-widest leading-none">ИТОГО</span>
-                    <div className="text-sm font-bold text-white coding-font tabular-nums tracking-tighter leading-none mt-0.5">
+                    <span className="block text-[5px] text-slate-400 font-mono uppercase tracking-widest leading-none">ИТОГО</span>
+                    <div className="text-sm font-bold text-white tabular-nums tracking-tighter leading-none mt-0.5">
                         {(e.total || 0).toLocaleString()} <span className="text-[7px] opacity-40 font-normal">₽</span>
                     </div>
                 </div>
@@ -204,6 +215,7 @@ const EntryCard: React.FC<{
 const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, activeTab, onDataChange }) => {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
+  const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
 
   const loadEntries = async () => {
     try {
@@ -249,31 +261,73 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, activeTab, onDat
       price: null,
       total: 0,
       date: Date.now(),
+      order: entries.length,
       archived: false
     };
     await saveEntry(newEntry);
-    setEntries(prev => [newEntry, ...prev]);
+    setEntries(prev => [...prev, newEntry]);
     onDataChange();
+  };
+
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedIdx(index);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = async (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    const currentTabEntries = entries.filter(e => e.type === activeTab);
+    if (draggedIdx === null || draggedIdx === index) return;
+
+    const newTabEntries = [...currentTabEntries];
+    const [movedItem] = newTabEntries.splice(draggedIdx, 1);
+    newTabEntries.splice(index, 0, movedItem);
+
+    // Update orders for this tab
+    const finalizedTabEntries = newTabEntries.map((item, i) => ({ ...item, order: i }));
+    
+    // Merge back into all entries
+    const otherEntries = entries.filter(e => e.type !== activeTab);
+    const finalizedAll = [...otherEntries, ...finalizedTabEntries];
+
+    setEntries(finalizedAll);
+    setDraggedIdx(null);
+
+    // Persist
+    for (const item of finalizedTabEntries) {
+      await saveEntry(item);
+    }
   };
 
   const sectionTotal = entries
     .filter(e => e.type === activeTab)
     .reduce((sum, e) => sum + (e.total || 0), 0);
 
+  const currentTabEntries = entries.filter(e => e.type === activeTab);
+
   return (
     <div className="flex flex-col h-full pt-0.5">
       <div className="flex-1 overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-1.5 pb-28 px-1 no-scrollbar">
-        {entries.filter(e => e.type === activeTab).map(e => (
+        {currentTabEntries.map((e, idx) => (
             <EntryCard 
               key={e.id} 
               e={e} 
+              index={idx}
               onUpdate={handleEntryUpdate}
               onDelete={handleEntryDelete}
               onTypeToggle={handleEntryTypeToggle}
               onShowFullscreen={setFullscreenImage}
+              onDragStart={handleDragStart}
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
+              isDragged={draggedIdx === idx}
             />
         ))}
-        {entries.filter(e => e.type === activeTab).length === 0 && (
+        {currentTabEntries.length === 0 && (
             <div className="col-span-full py-8 text-center opacity-10 border border-dashed border-slate-800 rounded-lg flex flex-col items-center gap-1.5">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4" strokeWidth={1}/></svg>
                 <p className="text-[7px] uppercase font-mono tracking-widest">Список пуст</p>
@@ -286,7 +340,7 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, activeTab, onDat
         style={{ paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom))' }}
       >
           <div className="flex flex-col pl-2">
-              <span className="text-[6px] text-slate-500 font-mono uppercase tracking-[0.2em] mb-0.5">_ИТОГО {activeTab === EntryType.MATERIAL ? 'МАТ' : 'РАБ'}_</span>
+              <span className="text-[6px] text-slate-400 font-mono uppercase tracking-[0.2em] mb-0.5">_ИТОГО {activeTab === EntryType.MATERIAL ? 'МАТ' : 'РАБ'}_</span>
               <div className="text-base font-bold text-white coding-font tracking-tighter tabular-nums leading-none">
                   {sectionTotal.toLocaleString()} <span className="text-[9px] text-emerald-500 font-normal">₽</span>
               </div>

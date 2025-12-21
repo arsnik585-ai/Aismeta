@@ -67,7 +67,9 @@ export const getProjects = async (showArchived = false): Promise<Project[]> => {
     const request = tx.objectStore('projects').getAll();
     request.onsuccess = () => {
       const all = request.result as Project[];
-      const filtered = all.filter(p => (!!p.archived) === showArchived);
+      const filtered = all
+        .filter(p => (!!p.archived) === showArchived)
+        .sort((a, b) => (a.order ?? a.createdAt) - (b.order ?? b.createdAt));
       resolve(filtered);
     };
     request.onerror = () => reject(request.error);
@@ -102,7 +104,10 @@ export const getEntriesByProject = async (projectId: string, showArchived = fals
     const request = index.getAll(IDBKeyRange.only(projectId));
     request.onsuccess = () => {
       const all = request.result as Entry[];
-      resolve(all.filter(e => (!!e.archived) === showArchived));
+      const filtered = all
+        .filter(e => (!!e.archived) === showArchived)
+        .sort((a, b) => (a.order ?? a.date) - (b.order ?? b.date));
+      resolve(filtered);
     };
     request.onerror = () => reject(request.error);
   });
