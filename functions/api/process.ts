@@ -1,33 +1,30 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
-export const onRequestPost = async (context: any) => {
+export const onRequestPost = async (context: { request: Request; env: { API_KEY: string } }) => {
   const { request, env } = context;
 
-  // Проверка наличия ключа в окружении Cloudflare
   if (!env.API_KEY) {
-    return new Response(JSON.stringify({ error: "API_KEY not found in environment" }), { 
+    return new Response(JSON.stringify({ error: "Ключ API_KEY не настроен в переменных Cloudflare" }), { 
       status: 500,
       headers: { "Content-Type": "application/json" }
     });
   }
 
   try {
-    const { action, payload } = await request.json();
+    const { action, payload } = await request.json() as { action: string, payload: string };
 
-    // Шимминг process.env для соответствия требованиям SDK
-    (globalThis as any).process = { env: { API_KEY: env.API_KEY } };
-
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    // Инициализация AI прямо в функции
+    const ai = new GoogleGenAI({ apiKey: env.API_KEY });
     
     const SYSTEM_INSTRUCTION = `Вы — эксперт BuildFlow AI. 
     Ваша задача: извлекать строительные материалы и работы из чеков или голоса.
-    Верни строго массив объектов JSON.`;
+    Верни строго массив объектов JSON. Каждое поле должно быть заполнено на основе контекста.`;
 
     const ITEM_SCHEMA = {
       type: Type.OBJECT,
       properties: {
-        name: { type: Type.STRING },
-        type: { type: Type.STRING, enum: ['MATERIAL', 'LABOR'] },
+        name: { type: Type.STRING, description: "Название материала или работы" },
+        type: { type: Type.STRING, enum: ['MATERIAL', 'LABOR'], description: "Тип: МАТЕРИАЛ или РАБОТА" },
         quantity: { type: Type.NUMBER, nullable: true },
         unit: { type: Type.STRING, nullable: true },
         price: { type: Type.NUMBER, nullable: true },
@@ -44,12 +41,12 @@ export const onRequestPost = async (context: any) => {
       contents = {
         parts: [
           { inlineData: { mimeType: 'image/jpeg', data: payload } },
-          { text: "Извлеки все товары и цены в JSON массив." }
+          { text: "Извлеки все товары, услуги и цены в JSON массив. Если цена не указана, поставь null." }
         ]
       };
     } else {
       contents = {
-        parts: [{ text: `Разбери эту строительную заметку: ${payload}` }]
+        parts: [{ text: `Проанализируй текст и выдели позиции для сметы: ${payload}` }]
       };
     }
 
@@ -66,13 +63,14 @@ export const onRequestPost = async (context: any) => {
       }
     });
 
-    return new Response(response.text, {
+    const resultText = response.text || "[]";
+    return new Response(resultText, {
       headers: { "Content-Type": "application/json" }
     });
 
   } catch (err: any) {
     console.error("Worker Error:", err);
-    return new Response(JSON.stringify({ error: err.message || "Internal Server Error" }), { 
+    return new Response(JSON.stringify({ error: err.message || "Ошибка сервера при обработке ИИ" }), { 
       status: 500,
       headers: { "Content-Type": "application/json" }
     });
