@@ -1,4 +1,5 @@
-import React, { useState, useRef } from 'react';
+
+import React, { useState, useRef, useEffect } from 'react';
 import { Project } from '../types';
 
 interface DashboardProps {
@@ -29,115 +30,95 @@ const ProjectCard: React.FC<{
   onQuickAction: (p: Project, action: string) => void;
   isArchivedView: boolean;
 }> = ({ p, mTotal, lTotal, onSelect, onArchiveToggle, onDelete, onRenameStart, onShareClick, onDuplicate, onQuickAction, isArchivedView }) => {
-  const [translateX, setTranslateX] = useState(0);
-  const touchStart = useRef<number>(0);
-  const isMoving = useRef<boolean>(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
-  const onTouchStart = (e: React.TouchEvent) => {
-    if (isArchivedView) return; // Disable swipe in archive
-    touchStart.current = e.targetTouches[0].clientX;
-    isMoving.current = false;
-  };
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowMenu(false);
+      }
+    };
+    if (showMenu) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showMenu]);
 
-  const onTouchMove = (e: React.TouchEvent) => {
-    if (isArchivedView) return; // Disable swipe in archive
-    const diff = e.targetTouches[0].clientX - touchStart.current;
-    if (Math.abs(diff) > 10) isMoving.current = true;
-    if (diff < 0) {
-      setTranslateX(Math.max(diff, -100));
-    } else {
-      setTranslateX(0);
-    }
-  };
-
-  const onTouchEnd = () => {
-    if (isArchivedView) return;
-    if (translateX < -60) {
-      setTranslateX(-100);
-    } else {
-      setTranslateX(0);
-    }
-  };
-
-  const handleRestore = (e: React.MouseEvent) => {
+  const toggleMenu = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onArchiveToggle(p.id);
-    setTranslateX(0);
-  };
-
-  const handleArchive = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onArchiveToggle(p.id);
-    setTranslateX(0);
-  };
-
-  const handleDelete = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (window.confirm("Удалить проект навсегда? Все данные будут потеряны.")) {
-        onDelete(p.id);
-    }
-    setTranslateX(0);
+    setShowMenu(!showMenu);
   };
 
   return (
-    <div className="relative overflow-hidden rounded-[2rem] bg-slate-950">
-      <div className="absolute inset-0 flex items-center justify-end px-4 gap-2">
-        {!isArchivedView && (
-          <button 
-              onClick={handleDelete} 
-              className="bg-red-600 text-white h-[80%] px-6 rounded-xl text-[9px] font-bold uppercase shadow-lg flex flex-col items-center justify-center gap-1 active:bg-red-500"
-          >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-              УДАЛИТЬ
-          </button>
-        )}
-      </div>
-
+    <div className="relative rounded-[2rem] bg-slate-950">
       <div 
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
-        onClick={() => !isMoving.current && translateX === 0 && onSelect(p)}
-        style={{ transform: `translateX(${translateX}px)` }}
-        className={`bg-slate-900 border border-slate-800 p-5 rounded-[2rem] transition-transform duration-200 ease-out cursor-pointer relative z-10 shadow-xl active:bg-slate-800 h-full flex flex-col justify-between ${isArchivedView ? 'opacity-90' : ''}`}
+        onClick={() => onSelect(p)}
+        className={`bg-slate-900 border border-slate-800 p-5 rounded-[2rem] transition-all cursor-pointer relative z-10 shadow-xl active:bg-slate-800 h-full flex flex-col justify-between ${isArchivedView ? 'opacity-90' : ''}`}
       >
         <div>
           <div className="flex justify-between items-start mb-4">
             <span className="text-[10px] text-emerald-400 font-mono bg-emerald-950 border border-emerald-900/50 px-3 py-1 rounded-full">
               {new Date(p.createdAt).toLocaleString('ru', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
             </span>
-            {!isArchivedView && (
-              <div className="flex gap-2" onClick={e => e.stopPropagation()}>
-                <button 
-                  onClick={handleArchive}
-                  className="p-2.5 text-amber-400 bg-amber-950 border border-amber-900/50 rounded-xl transition-colors active:bg-amber-900"
-                  title="Архивировать"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
-                </button>
-                <button 
-                  onClick={(e) => { e.stopPropagation(); onShareClick(p); }}
-                  className="p-2.5 text-emerald-400 bg-emerald-950 border border-emerald-900/50 rounded-xl transition-colors active:bg-emerald-900"
-                  title="Экспорт"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
-                </button>
-                <button 
-                  onClick={(e) => { e.stopPropagation(); onDuplicate(p); }}
-                  className="p-2.5 text-cyan-400 bg-cyan-950 border border-cyan-900/50 rounded-xl transition-colors active:bg-cyan-900"
-                  title="Дублировать"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" /></svg>
-                </button>
-                <button 
-                  onClick={(e) => { e.stopPropagation(); onRenameStart(p); }}
-                  className="p-2.5 text-slate-400 bg-slate-800 rounded-xl transition-colors"
-                  title="Переименовать"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" strokeWidth={2}/></svg>
-                </button>
-              </div>
-            )}
+            
+            <div className="relative" ref={menuRef}>
+              <button 
+                onClick={toggleMenu}
+                className="p-2 text-slate-400 hover:text-white transition-colors rounded-xl hover:bg-slate-800"
+              >
+                <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
+                </svg>
+              </button>
+
+              {showMenu && (
+                <div className="absolute right-0 mt-2 w-48 bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl py-2 z-50 animate-in fade-in zoom-in-95 duration-150 origin-top-right">
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); onRenameStart(p); setShowMenu(false); }}
+                    className="w-full text-left px-4 py-3 text-xs font-bold text-slate-300 hover:bg-slate-700 flex items-center gap-3 uppercase tracking-widest"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" strokeWidth={2}/></svg>
+                    Редактировать
+                  </button>
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); onDuplicate(p); setShowMenu(false); }}
+                    className="w-full text-left px-4 py-3 text-xs font-bold text-slate-300 hover:bg-slate-700 flex items-center gap-3 uppercase tracking-widest"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" /></svg>
+                    Дублировать
+                  </button>
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); onArchiveToggle(p.id); setShowMenu(false); }}
+                    className="w-full text-left px-4 py-3 text-xs font-bold text-amber-400 hover:bg-amber-950/30 flex items-center gap-3 uppercase tracking-widest"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
+                    {isArchivedView ? 'Восстановить' : 'Архивировать'}
+                  </button>
+                  {!isArchivedView && (
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); onShareClick(p); setShowMenu(false); }}
+                      className="w-full text-left px-4 py-3 text-xs font-bold text-emerald-400 hover:bg-emerald-950/30 flex items-center gap-3 uppercase tracking-widest"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+                      Поделиться
+                    </button>
+                  )}
+                  <div className="h-px bg-slate-700 my-1 mx-2"></div>
+                  <button 
+                    onClick={(e) => { 
+                      e.stopPropagation(); 
+                      if (window.confirm("Удалить проект навсегда? Все данные будут потеряны.")) {
+                        onDelete(p.id);
+                      }
+                      setShowMenu(false);
+                    }}
+                    className="w-full text-left px-4 py-3 text-xs font-bold text-red-400 hover:bg-red-950/30 flex items-center gap-3 uppercase tracking-widest"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    Удалить
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="mb-4">
@@ -167,14 +148,7 @@ const ProjectCard: React.FC<{
               </div>
            </div>
            
-           {isArchivedView ? (
-             <button 
-                onClick={handleRestore}
-                className="px-6 py-4 bg-emerald-600 rounded-2xl text-white font-bold text-[11px] uppercase tracking-widest active:scale-95 shadow-xl shadow-emerald-900/20"
-             >
-                Восстановить
-             </button>
-           ) : (
+           {!isArchivedView && (
              <div className="flex gap-1.5" onClick={e => e.stopPropagation()}>
                 <button onClick={() => onQuickAction(p, 'material')} className="p-2.5 bg-slate-950 rounded-xl text-emerald-500 border border-slate-800 active:bg-slate-800 transition-all shadow-md" title="Добавить материал">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -366,7 +340,6 @@ const Dashboard: React.FC<DashboardProps> = ({
             {isAdding ? (
               <svg className="w-7 h-7 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
             ) : (
-              // Fix Linecap/Linejoin typo
               <svg className="w-7 h-7 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>
             )}
           </button>

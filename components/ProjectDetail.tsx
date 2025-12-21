@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Project, Entry, EntryType } from '../types';
 import { getEntriesByProject, saveEntry, deleteEntry, generateId } from '../db';
@@ -210,7 +211,7 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, activeTab, onDat
   const addManualEntry = async () => {
     const newEntry: Entry = {
       id: generateId(), projectId: project.id, type: activeTab,
-      name: '', quantity: 1, unit: '', price: 0, total: 0, vendor: '',
+      name: '', quantity: null, unit: '', price: null, total: 0, vendor: '',
       date: Date.now(), archived: false
     };
     await saveEntry(newEntry);
@@ -258,7 +259,16 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, activeTab, onDat
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1">
                         <span className="text-[10px] text-slate-500 font-mono uppercase px-2">КОЛ-ВО</span>
-                        <input type="number" value={editingEntry.quantity || ''} onChange={e => setEditingEntry({...editingEntry, quantity: parseFloat(e.target.value) || 0})} className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-4 text-white outline-none text-sm" placeholder="1" />
+                        <input 
+                          type="number" 
+                          value={editingEntry.quantity === null ? '' : editingEntry.quantity} 
+                          onChange={e => {
+                            const val = e.target.value === '' ? null : parseFloat(e.target.value);
+                            setEditingEntry({...editingEntry, quantity: val});
+                          }} 
+                          className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-4 text-white outline-none text-sm" 
+                          placeholder="" 
+                        />
                     </div>
                     <div className="space-y-1">
                         <span className="text-[10px] text-slate-500 font-mono uppercase px-2">ЕД.ИЗМ</span>
@@ -277,7 +287,16 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, activeTab, onDat
                 
                 <div className="space-y-1">
                     <span className="text-[10px] text-slate-500 font-mono uppercase px-2">ЦЕНА (ЗА ЕД.)</span>
-                    <input type="number" value={editingEntry.price || ''} onChange={e => setEditingEntry({...editingEntry, price: parseFloat(e.target.value) || 0})} className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-4 text-white outline-none text-sm" placeholder="0" />
+                    <input 
+                      type="number" 
+                      value={editingEntry.price === null ? '' : editingEntry.price} 
+                      onChange={e => {
+                        const val = e.target.value === '' ? null : parseFloat(e.target.value);
+                        setEditingEntry({...editingEntry, price: val});
+                      }} 
+                      className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-4 text-white outline-none text-sm" 
+                      placeholder="" 
+                    />
                 </div>
              </div>
 
@@ -288,7 +307,6 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, activeTab, onDat
                     <input type="file" ref={editorFileInputRef} className="hidden" accept="image/*" onChange={handleEditorPhotoAdd} />
                 </div>
                 <div className="flex gap-3 overflow-x-auto pb-4 no-scrollbar items-center">
-                    {/* Move Add Photo Button Here */}
                     <button 
                       onClick={() => editorFileInputRef.current?.click()} 
                       className="w-24 h-24 flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-800 bg-slate-950/50 text-cyan-400 active:bg-slate-800/50 shrink-0 shadow-lg"
