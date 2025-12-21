@@ -2,7 +2,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 
 /**
  * BuildFlow AI Service
- * Directly uses the injected process.env.API_KEY.
+ * Использует process.env.API_KEY напрямую согласно системным требованиям.
  */
 
 const SYSTEM_INSTRUCTION = `Вы — ведущий инженер BuildFlow AI. 
@@ -29,7 +29,6 @@ const ITEM_SCHEMA = {
 };
 
 export const processImage = async (base64Image: string) => {
-  // Use process.env.API_KEY directly as per system instructions
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   try {

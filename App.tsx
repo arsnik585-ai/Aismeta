@@ -60,7 +60,6 @@ const App: React.FC = () => {
     if (queue.length === 0) return;
 
     setIsSyncing(true);
-    console.log("[SYNC] Items to process:", queue.length);
 
     try {
       for (const item of queue) {
@@ -97,7 +96,6 @@ const App: React.FC = () => {
             });
           }
         } else {
-          // Success: delete placeholder and add real entries
           await new Promise((resolve) => {
             const req = store.delete(item.entryId);
             req.onsuccess = resolve;
@@ -139,158 +137,6 @@ const App: React.FC = () => {
     if (isOnline) handleSync();
   }, [isOnline, handleSync]);
 
-  const createNewProject = async (name: string, address: string) => {
-    const newProject: Project = {
-      id: generateId(),
-      name,
-      address,
-      createdAt: Date.now(),
-      archived: false
-    };
-    await saveProject(newProject);
-    await refreshProjects();
-    setCurrentProject(newProject);
-  };
-
-  const handleProjectArchive = async (id: string) => {
-    const project = projects.find(p => p.id === id);
-    if (!project) return;
-    await saveProject({ ...project, archived: !project.archived });
-    await refreshProjects();
-  };
-
-  const handleProjectPermanentDelete = async (id: string) => {
-    if (window.confirm("Удалить проект навсегда?")) {
-      await deleteProject(id);
-      await refreshProjects();
-      if (currentProject?.id === id) setCurrentProject(null);
-    }
-  };
-
-  const handleProjectQuickAction = (project: Project, action: string) => {
-    setCurrentProject(project);
-    setInitialAction(action);
-  };
-
-  const handleProjectRename = async (id: string, newName: string, newAddress: string) => {
-    const p = projects.find(item => item.id === id);
-    if (p) {
-      await saveProject({ ...p, name: newName, address: newAddress });
-      await refreshProjects();
-    }
-  };
-
-  const handleProjectDuplicate = async (project: Project) => {
-    const newId = generateId();
-    await saveProject({
-      ...project,
-      id: newId,
-      name: `${project.name} (Копия)`,
-      createdAt: Date.now(),
-      archived: false
-    });
-    const entries = await getEntriesByProject(project.id, false);
-    for (const entry of entries) {
-      await saveEntry({ ...entry, id: generateId(), projectId: newId, archived: false });
-    }
-    await refreshProjects();
-  };
-
-  const handleProjectShare = async (project: Project, format: 'text' | 'html' | 'json') => {
-    const { entries } = await getFullProjectData(project.id);
-    
-    if (format === 'html') {
-      const materials = entries.filter(e => e.type === EntryType.MATERIAL);
-      const labor = entries.filter(e => e.type === EntryType.LABOR);
-      const seenImages = new Set<string>();
-
-      const renderItems = (items: Entry[]) => items.map(item => {
-        const uniqueImages = (item.images || []).filter(img => {
-            if (seenImages.has(img)) return false;
-            seenImages.add(img);
-            return true;
-        });
-
-        return `
-          <div style="border-bottom: 1px solid #eee; padding: 15px 0;">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-              <div>
-                <div style="font-weight: bold; font-size: 1.1em; color: #1e293b;">${item.name || 'Без названия'}</div>
-                <div style="font-size: 0.85em; color: #64748b; margin-top: 4px;">
-                  ${item.quantity || 0} ${item.unit || ''} × ${item.price || 0} ₽ | ${item.vendor || 'Без поставщика'}
-                </div>
-              </div>
-              <div style="font-weight: bold; font-size: 1.1em; color: #059669;">${(item.total || 0).toLocaleString()} ₽</div>
-            </div>
-            ${uniqueImages.length > 0 ? `
-              <div style="margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap;">
-                ${uniqueImages.map(img => `<img src="data:image/jpeg;base64,${img}" style="max-width: 200px; border-radius: 8px; border: 1px solid #e2e8f0;" />`).join('')}
-              </div>
-            ` : ''}
-          </div>
-        `;
-      }).join('');
-
-      const htmlContent = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${project.name} - Отчет</title><style>body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 40px; color: #334155; line-height: 1.5; max-width: 800px; margin: 0 auto; background: #f8fafc; }.header { background: #fff; padding: 30px; border-radius: 20px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); margin-bottom: 30px; }h1 { color: #059669; margin: 0; font-size: 2em; }.address { color: #64748b; font-size: 0.9em; margin-top: 5px; }.section { background: #fff; padding: 30px; border-radius: 20px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); margin-bottom: 20px; }.section-title { font-size: 1.2em; font-weight: 800; color: #059669; border-bottom: 2px solid #ecfdf5; padding-bottom: 10px; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 0.05em; }@media print { body { background: #fff; padding: 0; } .header, .section { box-shadow: none; border: 1px solid #eee; } }</style></head><body><div class="header"><h1>${project.name}</h1><p class="address">${project.address || 'Адрес не указан'}</p></div><div class="section"><div class="section-title">Материалы</div>${renderItems(materials)}</div><div class="section"><div class="section-title">Работы</div>${renderItems(labor)}</div></body></html>`;
-
-      const blob = new Blob([htmlContent], { type: 'text/html' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${project.name}_отчет.html`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } else if (format === 'text') {
-      const materials = entries.filter(e => e.type === EntryType.MATERIAL);
-      const labor = entries.filter(e => e.type === EntryType.LABOR);
-      
-      let text = `ПРОЕКТ: ${project.name}\nАДРЕС: ${project.address || 'не указан'}\n\n`;
-      text += `МАТЕРИАЛЫ:\n`;
-      materials.forEach(e => {
-        text += `- ${e.name}: ${e.quantity || 0} ${e.unit || ''} x ${e.price || 0} = ${e.total || 0} руб.\n`;
-      });
-      text += `\nРАБОТЫ:\n`;
-      labor.forEach(e => {
-        text += `- ${e.name}: ${e.quantity || 0} ${e.unit || ''} x ${e.price || 0} = ${e.total || 0} руб.\n`;
-      });
-
-      const blob = new Blob([text], { type: 'text/plain' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${project.name}_смета.txt`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } else if (format === 'json') {
-      const data = JSON.stringify({ project, entries }, null, 2);
-      const blob = new Blob([data], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${project.name}.ais`;
-      a.click();
-      URL.revokeObjectURL(url);
-    }
-  };
-
-  const handleImport = async (file: File) => {
-    try {
-      const text = await file.text();
-      const data = JSON.parse(text);
-      if (data.project && Array.isArray(data.entries)) {
-        const newProject = { ...data.project, id: generateId(), createdAt: Date.now(), archived: false };
-        await saveProject(newProject);
-        for (const entry of data.entries) {
-          await saveEntry({ ...entry, id: generateId(), projectId: newProject.id, archived: false });
-        }
-        await refreshProjects();
-      }
-    } catch (e) {
-      console.error("Import failed:", e);
-      alert("Ошибка импорта файла: некорректный формат .ais");
-    }
-  };
-
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200 flex flex-col max-w-5xl mx-auto shadow-[0_0_100px_rgba(0,0,0,0.5)] border-x border-slate-900">
       <SyncStatus isOnline={isOnline} isSyncing={isSyncing} />
@@ -305,7 +151,7 @@ const App: React.FC = () => {
         title={currentProject ? currentProject.name : 'BuildFlow AI'}
         viewingArchive={viewingArchive}
         onToggleArchive={() => setViewingArchive(!viewingArchive)}
-        onImport={handleImport}
+        onImport={(file) => {}} 
         activeTab={activeTab}
         onTabChange={setActiveTab}
       />
@@ -325,13 +171,42 @@ const App: React.FC = () => {
             materialTotals={materialTotals}
             laborTotals={laborTotals}
             onProjectSelect={setCurrentProject}
-            onCreateProject={createNewProject}
-            onArchive={handleProjectArchive}
-            onPermanentDelete={handleProjectPermanentDelete}
-            onDuplicate={handleProjectDuplicate}
-            onRename={handleProjectRename}
-            onShare={handleProjectShare}
-            onQuickAction={handleProjectQuickAction}
+            onCreateProject={async (n, a) => {
+                const newProject: Project = { id: generateId(), name: n, address: a, createdAt: Date.now(), archived: false };
+                await saveProject(newProject);
+                await refreshProjects();
+                setCurrentProject(newProject);
+            }}
+            onArchive={async (id) => {
+                const p = projects.find(item => item.id === id);
+                if (p) {
+                    await saveProject({ ...p, archived: !p.archived });
+                    await refreshProjects();
+                }
+            }}
+            onPermanentDelete={async (id) => {
+                if (window.confirm("Удалить проект?")) {
+                    await deleteProject(id);
+                    await refreshProjects();
+                }
+            }}
+            onDuplicate={async (p) => {
+                const newId = generateId();
+                await saveProject({ ...p, id: newId, name: `${p.name} (Копия)`, createdAt: Date.now() });
+                await refreshProjects();
+            }}
+            onRename={async (id, n, a) => {
+                const p = projects.find(item => item.id === id);
+                if (p) {
+                    await saveProject({ ...p, name: n, address: a });
+                    await refreshProjects();
+                }
+            }}
+            onShare={(p, f) => {}}
+            onQuickAction={(p, a) => {
+                setCurrentProject(p);
+                setInitialAction(a);
+            }}
             viewingArchive={viewingArchive}
           />
         )}
