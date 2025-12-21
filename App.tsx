@@ -61,7 +61,11 @@ const App: React.FC = () => {
 
     setIsSyncing(true);
     try {
+      // Обрабатываем очередь по одному элементу
       for (const item of queue) {
+        let errorToRecord: string | null = null;
+        let resultItems: any[] = [];
+
         try {
           let aiResult: any;
           if (item.type === 'PHOTO') {
@@ -69,17 +73,34 @@ const App: React.FC = () => {
           } else {
             aiResult = await processVoice(item.payload);
           }
+          resultItems = Array.isArray(aiResult) ? aiResult : (aiResult.items || []);
+          if (resultItems.length === 0) errorToRecord = "ИИ не нашел позиций.";
+        } catch (e: any) {
+          console.error("AI processing error:", e);
+          errorToRecord = e.message || "Ошибка ИИ";
+        }
 
-          const resultItems = Array.isArray(aiResult) ? aiResult : (aiResult.items || []);
-          
-          if (resultItems.length === 0) {
-            throw new Error("ИИ не нашел позиций.");
+        if (errorToRecord) {
+          // Если ошибка, обновляем статус временной карточки
+          const db = await initDB();
+          const tx = db.transaction('entries', 'readwrite');
+          const store = tx.objectStore('entries');
+          const entry = await new Promise<Entry | undefined>((resolve) => {
+            const req = store.get(item.entryId);
+            req.onsuccess = () => resolve(req.result);
+          });
+
+          if (entry) {
+            entry.processed = true;
+            entry.error = errorToRecord;
+            await new Promise((resolve) => {
+              const req = store.put(entry);
+              req.onsuccess = resolve;
+            });
           }
-
-          // Удаляем временную карточку
+        } else {
+          // Если успех, удаляем временную карточку и создаем новые
           await deleteEntry(item.entryId);
-
-          // Добавляем распознанные позиции
           for (const entryData of resultItems) {
             const newEntry: Entry = {
               id: generateId(),
@@ -98,29 +119,13 @@ const App: React.FC = () => {
             };
             await saveEntry(newEntry);
           }
-
-          await removeFromSyncQueue(item.id);
-        } catch (e: any) {
-          console.error("Sync Item Error:", item.id, e);
-          
-          // Обработка терминальной ошибки для записи в карточку
-          const db = await initDB();
-          const tx = db.transaction('entries', 'readwrite');
-          const store = tx.objectStore('entries');
-          const request = store.get(item.entryId);
-          
-          request.onsuccess = () => {
-            const entry = request.result;
-            if (entry) {
-              entry.processed = true;
-              entry.error = e.message || "Ошибка ИИ";
-              store.put(entry);
-            }
-          };
-
-          await removeFromSyncQueue(item.id);
         }
+        
+        // В любом случае удаляем из очереди
+        await removeFromSyncQueue(item.id);
       }
+    } catch (criticalErr) {
+      console.error("Critical sync loop error:", criticalErr);
     } finally {
       setIsSyncing(false);
       await refreshProjects();

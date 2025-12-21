@@ -2,14 +2,8 @@ import { GoogleGenAI, Type } from "@google/genai";
 
 /**
  * BuildFlow AI Service
- * Использует прямой доступ к Gemini API через SDK.
- * process.env.API_KEY предоставляется средой выполнения.
+ * Согласно инструкциям, API ключ берется строго из process.env.API_KEY.
  */
-
-const getAIModel = () => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
-  return ai;
-};
 
 const SYSTEM_INSTRUCTION = `Вы — ведущий инженер BuildFlow AI. 
 Ваша задача: извлекать строительные материалы (MATERIAL) и работы (LABOR) из чеков или заметок.
@@ -35,58 +29,63 @@ const ITEM_SCHEMA = {
 };
 
 export const processImage = async (base64Image: string) => {
-  try {
-    const ai = getAIModel();
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: [
-        {
-          role: 'user',
-          parts: [
-            { inlineData: { mimeType: 'image/jpeg', data: base64Image } },
-            { text: "Распознай все строительные позиции на этом фото чека. Сформируй JSON список." }
-          ]
-        }
-      ],
-      config: {
-        systemInstruction: SYSTEM_INSTRUCTION,
-        responseMimeType: "application/json",
-        responseSchema: ITEM_SCHEMA
+  // Инициализация внутри функции для обеспечения актуальности API_KEY
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  
+  const response = await ai.models.generateContent({
+    model: 'gemini-3-flash-preview',
+    contents: [
+      {
+        role: 'user',
+        parts: [
+          { inlineData: { mimeType: 'image/jpeg', data: base64Image } },
+          { text: "Распознай все строительные позиции на этом фото чека. Сформируй JSON список." }
+        ]
       }
-    });
+    ],
+    config: {
+      systemInstruction: SYSTEM_INSTRUCTION,
+      responseMimeType: "application/json",
+      responseSchema: ITEM_SCHEMA
+    }
+  });
 
-    const text = response.text;
-    if (!text) throw new Error("ИИ вернул пустой ответ.");
+  const text = response.text;
+  if (!text) throw new Error("ИИ вернул пустой ответ.");
+  
+  try {
     return JSON.parse(text);
-  } catch (err: any) {
-    console.error("AI Image Processing Error:", err);
-    throw new Error(err.message || "Ошибка при анализе изображения");
+  } catch (e) {
+    console.error("JSON Parse Error:", text);
+    throw new Error("Ошибка парсинга ответа ИИ.");
   }
 };
 
 export const processVoice = async (transcript: string) => {
-  try {
-    const ai = getAIModel();
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: [
-        {
-          role: 'user',
-          parts: [{ text: `Разбери строительную заметку: "${transcript}". Сформируй JSON список материалов и работ.` }]
-        }
-      ],
-      config: {
-        systemInstruction: SYSTEM_INSTRUCTION,
-        responseMimeType: "application/json",
-        responseSchema: ITEM_SCHEMA
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  
+  const response = await ai.models.generateContent({
+    model: 'gemini-3-flash-preview',
+    contents: [
+      {
+        role: 'user',
+        parts: [{ text: `Разбери строительную заметку: "${transcript}". Сформируй JSON список материалов и работ.` }]
       }
-    });
+    ],
+    config: {
+      systemInstruction: SYSTEM_INSTRUCTION,
+      responseMimeType: "application/json",
+      responseSchema: ITEM_SCHEMA
+    }
+  });
 
-    const text = response.text;
-    if (!text) throw new Error("ИИ вернул пустой ответ.");
+  const text = response.text;
+  if (!text) throw new Error("ИИ вернул пустой ответ.");
+  
+  try {
     return JSON.parse(text);
-  } catch (err: any) {
-    console.error("AI Voice Processing Error:", err);
-    throw new Error(err.message || "Ошибка при разборе текста");
+  } catch (e) {
+    console.error("JSON Parse Error:", text);
+    throw new Error("Ошибка парсинга ответа ИИ.");
   }
 };
