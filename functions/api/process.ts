@@ -76,7 +76,7 @@ export const onRequestPost = async (context: { request: Request; env: Env }) => 
   } catch (err: any) {
     console.error("Worker Execution Error:", err);
     return new Response(
-      JSON.stringify({ error: err.message || "Ошибка ИИ" }), 
+      JSON.stringify({ error: err.message || "Ошибка ИИ при обработке запроса" }), 
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
