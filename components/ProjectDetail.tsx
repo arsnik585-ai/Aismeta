@@ -15,7 +15,8 @@ const EntryCard: React.FC<{
     onSelect: (e: Entry) => void;
     onPermanentDelete: (id: string) => void;
     onTypeToggle: (id: string) => void;
-}> = ({ e, onSelect, onPermanentDelete, onTypeToggle }) => {
+    onRetry: (e: Entry) => void;
+}> = ({ e, onSelect, onPermanentDelete, onTypeToggle, onRetry }) => {
     const [translateX, setTranslateX] = useState(0);
     const [showMenu, setShowMenu] = useState(false);
     const touchStart = useRef<number>(0);
@@ -57,13 +58,19 @@ const EntryCard: React.FC<{
         setTranslateX(0);
     };
 
+    const handleRetryAction = (evt: React.MouseEvent) => {
+        evt.stopPropagation();
+        onRetry(e);
+        setShowMenu(false);
+    };
+
     const stopBubbling = (evt: React.SyntheticEvent) => {
         evt.stopPropagation();
     };
 
     return (
         <div className="relative overflow-hidden rounded-[1.5rem] bg-slate-950">
-            {/* Свайп-меню (задний план) */}
+            {/* Swipe Menu */}
             <div className="absolute inset-0 flex items-center justify-end px-4 gap-2">
                 <button 
                   onMouseDown={handleDelete}
@@ -74,21 +81,23 @@ const EntryCard: React.FC<{
                 </button>
             </div>
 
-            {/* Основная карточка */}
+            {/* Main Card */}
             <div 
                 onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
                 onClick={() => !isMoving.current && translateX === 0 && onSelect(e)}
                 style={{ transform: `translateX(${translateX}px)` }}
-                className={`bg-slate-900 border ${e.error ? 'border-red-500/50' : e.processed ? 'border-slate-800' : 'border-cyan-500/50 animate-pulse'} p-5 rounded-[1.5rem] transition-transform duration-200 ease-out relative z-10 shadow-lg active:bg-slate-800 h-full flex flex-col justify-between cursor-pointer`}
+                className={`bg-slate-900 border ${e.error ? 'border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.05)]' : e.processed ? 'border-slate-800' : 'border-cyan-500/50 animate-pulse'} p-5 rounded-[1.5rem] transition-transform duration-200 ease-out relative z-10 shadow-lg active:bg-slate-800 h-full flex flex-col justify-between cursor-pointer`}
             >
                 <div className="flex justify-between items-start gap-3 relative">
                     <div className="flex-1 min-w-0 pr-8">
-                        <div className="text-lg font-bold text-white leading-tight mb-1 truncate uppercase coding-font">{e.name || 'БЕЗ НАЗВАНИЯ'}</div>
+                        <div className={`text-lg font-bold ${e.error ? 'text-red-400' : 'text-white'} leading-tight mb-1 truncate uppercase coding-font`}>
+                          {e.name || (e.error ? 'ОШИБКА АНАЛИЗА' : 'АНАЛИЗ...')}
+                        </div>
                         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
                             {e.error ? (
-                              <div className="text-[10px] text-red-400 font-mono uppercase bg-red-950/50 border border-red-900/50 px-2 py-0.5 rounded flex items-center gap-1 shrink-0">
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                ОШИБКА
+                              <div className="text-[9px] text-red-400 font-mono uppercase bg-red-950/50 border border-red-900/50 px-2 py-0.5 rounded flex items-center gap-1.5 shrink-0 max-w-[200px] truncate">
+                                <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                {e.error}
                               </div>
                             ) : (
                               <span className="text-[10px] text-cyan-400 font-mono uppercase bg-cyan-950 border border-cyan-900/50 px-2 py-0.5 rounded shrink-0">
@@ -104,7 +113,7 @@ const EntryCard: React.FC<{
                         </div>
                     </div>
                     
-                    {/* Кнопка три точки */}
+                    {/* Menu Button */}
                     <div 
                         className="absolute top-0 right-0 z-20" 
                         ref={menuRef} 
@@ -118,6 +127,15 @@ const EntryCard: React.FC<{
                         </button>
                         {showMenu && (
                           <div className="absolute right-0 top-10 w-48 bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl py-2 animate-in fade-in zoom-in-95 duration-150 origin-top-right">
+                            {e.error && (
+                               <button 
+                                  onClick={handleRetryAction} 
+                                  className="w-full text-left px-4 py-3 text-xs font-bold text-emerald-400 hover:bg-emerald-950/30 flex items-center gap-3"
+                               >
+                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                                 ПОВТОРИТЬ ИИ
+                               </button>
+                            )}
                             <button 
                                 onMouseDown={(evt) => { stopBubbling(evt); onTypeToggle(e.id); setShowMenu(false); }} 
                                 className="w-full text-left px-4 py-3 text-xs font-bold text-slate-300 hover:bg-slate-700 flex items-center gap-3"
@@ -146,10 +164,18 @@ const EntryCard: React.FC<{
                         </div>
                     </div>
                     <div className="text-right">
-                        <span className="text-[9px] text-slate-500 font-mono uppercase block mb-1 opacity-60 tracking-widest">_ИТОГО_</span>
-                        <div className="text-2xl font-bold text-emerald-400 coding-font tracking-tighter tabular-nums">
-                            {e.total?.toLocaleString() || '0'} <span className="text-sm font-normal opacity-50">₽</span>
-                        </div>
+                        {e.error ? (
+                           <button onClick={handleRetryAction} className="bg-red-600/10 text-red-400 p-2.5 rounded-xl border border-red-900/50 active:scale-95 transition-all">
+                              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                           </button>
+                        ) : (
+                          <>
+                            <span className="text-[9px] text-slate-500 font-mono uppercase block mb-1 opacity-60 tracking-widest">_ИТОГО_</span>
+                            <div className="text-2xl font-bold text-emerald-400 coding-font tracking-tighter tabular-nums">
+                                {e.total?.toLocaleString() || '0'} <span className="text-sm font-normal opacity-50">₽</span>
+                            </div>
+                          </>
+                        )}
                     </div>
                 </div>
             </div>
@@ -196,6 +222,19 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, isOnline, onSync
       await deleteEntry(id);
       await loadEntries();
     }
+  };
+
+  const handleRetryEntry = async (entry: Entry) => {
+    // Reset state and re-queue
+    const updatedEntry = { ...entry, processed: false, error: undefined, name: entry.images ? 'Анализ чека...' : 'Разбор голоса...' };
+    await saveEntry(updatedEntry);
+    
+    const payload = entry.images ? entry.images[0] : (entry.voiceTranscript || '');
+    const type = entry.images ? 'PHOTO' : 'VOICE';
+    
+    await addToSyncQueue({ id: generateId(), entryId: entry.id, type: type as 'PHOTO' | 'VOICE', payload });
+    onSyncRequested();
+    await loadEntries();
   };
 
   const handleVoiceInput = () => {
@@ -281,6 +320,7 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, isOnline, onSync
               onSelect={setEditingEntry} 
               onPermanentDelete={handleEntryPermanentDelete} 
               onTypeToggle={handleEntryTypeToggle} 
+              onRetry={handleRetryEntry}
             />
         ))}
       </div>
@@ -312,6 +352,16 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, isOnline, onSync
                 </div>
              </div>
 
+             {editingEntry.error && (
+               <div className="p-4 bg-red-950/30 border border-red-500/30 rounded-2xl flex items-start gap-3">
+                  <svg className="w-5 h-5 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                  <div className="text-xs text-red-300 font-medium leading-relaxed">
+                     <span className="font-bold block mb-1">ОШИБКА АНАЛИЗА:</span>
+                     {editingEntry.error}
+                  </div>
+               </div>
+             )}
+
              <div className="space-y-4">
                 <div className="space-y-1">
                     <span className="text-[10px] text-slate-500 font-mono uppercase px-2">НАИМЕНОВАНИЕ / ПОСТАВЩИК</span>
@@ -336,7 +386,7 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, isOnline, onSync
                 </div>
              </div>
 
-             {/* Картинки внизу редактора */}
+             {/* Images Section */}
              {editingEntry.images && editingEntry.images.length > 0 && (
                 <div className="space-y-2 pt-2 border-t border-slate-800/50">
                     <span className="text-[10px] text-slate-500 font-mono uppercase px-2">ИЗОБРАЖЕНИЯ</span>
@@ -359,7 +409,7 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, isOnline, onSync
 
              <div className="flex gap-4 pt-4">
                 <button onClick={() => setEditingEntry(null)} className="flex-1 bg-slate-800 py-4 rounded-2xl font-bold text-slate-400 uppercase text-xs hover:bg-slate-700 transition-colors">Отмена</button>
-                <button onClick={async () => { await saveEntry({...editingEntry, total: (editingEntry.quantity || 0) * (editingEntry.price || 0)}); setEditingEntry(null); loadEntries(); }} className="flex-1 bg-emerald-600 py-4 rounded-2xl font-bold text-white uppercase text-xs hover:bg-emerald-500 transition-colors shadow-lg shadow-emerald-950/20">Сохранить</button>
+                <button onClick={async () => { await saveEntry({...editingEntry, total: (editingEntry.quantity || 0) * (editingEntry.price || 0), error: undefined}); setEditingEntry(null); loadEntries(); }} className="flex-1 bg-emerald-600 py-4 rounded-2xl font-bold text-white uppercase text-xs hover:bg-emerald-500 transition-colors shadow-lg shadow-emerald-950/20">Сохранить</button>
              </div>
           </div>
         </div>

@@ -69,14 +69,12 @@ const App: React.FC = () => {
           aiResult = await processVoice(item.payload);
         }
 
-        // Гарантируем, что работаем с массивом
         const resultItems = Array.isArray(aiResult) ? aiResult : (aiResult.items || []);
         
         if (resultItems.length === 0) {
-          throw new Error("ИИ не нашел позиций для сохранения.");
+          throw new Error("ИИ не распознал позиций на фото или в голосе.");
         }
 
-        // Удаляем временную карточку только если получили результат
         await deleteEntry(item.entryId);
 
         for (const entryData of resultItems) {
@@ -100,9 +98,14 @@ const App: React.FC = () => {
 
         await removeFromSyncQueue(item.id);
       } catch (e: any) {
-        console.error("Sync Critical Error:", item.id, e);
+        console.error("Sync Logic Error:", item.id, e);
         
-        // Помечаем существующую временную запись как ошибку
+        // If it's a 503 or network error, skip this item and try later (don't remove from queue)
+        if (e.message?.includes('503') || e.message?.includes('перегружен') || !navigator.onLine) {
+          continue; 
+        }
+
+        // Terminal error: update the placeholder entry with error details
         const db = await initDB();
         const tx = db.transaction('entries', 'readwrite');
         const store = tx.objectStore('entries');
@@ -112,8 +115,7 @@ const App: React.FC = () => {
           const entry = req.result;
           if (entry) {
             entry.processed = true;
-            entry.name = "Ошибка анализа";
-            entry.error = e.message || "Сбой связи с ИИ";
+            entry.error = e.message || "Сбой анализа";
             store.put(entry);
           }
         };

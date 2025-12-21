@@ -7,24 +7,32 @@ interface Env {
 export const onRequestPost = async (context: { request: Request; env: Env }) => {
   const { request, env } = context;
 
-  // Проверка ключа
   if (!env.API_KEY) {
     return new Response(
-      JSON.stringify({ error: "Критическая ошибка: API_KEY не настроен в Cloudflare." }), 
+      JSON.stringify({ error: "API_KEY_MISSING", message: "Системная ошибка: API ключ не настроен." }), 
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
 
   try {
-    const { action, payload } = await request.json() as { action: string; payload: string };
+    const body = await request.json() as { action: string; payload: string };
+    const { action, payload } = body;
+
+    if (!payload || payload.length < 5) {
+      return new Response(
+        JSON.stringify({ error: "EMPTY_PAYLOAD", message: "Данные для анализа не получены или повреждены." }), 
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    }
 
     const ai = new GoogleGenAI({ apiKey: env.API_KEY });
     
     const SYSTEM_INSTRUCTION = `Вы — ведущий инженер BuildFlow AI. 
     Ваша задача: извлекать строительные материалы (MATERIAL) и работы (LABOR) из чеков или голосовых заметок.
-    Верни СТРОГО массив объектов JSON. Не добавляй никаких комментариев или markdown-разметки.
+    Верни СТРОГО массив объектов JSON. Не добавляй никаких комментариев.
     Если цена или количество не найдены, установи их в 0.
-    Поле 'type' может быть только 'MATERIAL' или 'LABOR'.`;
+    Поле 'type' может быть только 'MATERIAL' или 'LABOR'.
+    Если на изображении нет строительных товаров или в тексте нет смысла, верни пустой массив [].`;
 
     const ITEM_SCHEMA = {
       type: Type.OBJECT,
@@ -48,14 +56,14 @@ export const onRequestPost = async (context: { request: Request; env: Env }) => 
         role: 'user',
         parts: [
           { inlineData: { mimeType: 'image/jpeg', data: payload } },
-          { text: "Распознай все товары и услуги в этом документе и представь их в виде списка объектов JSON." }
+          { text: "Распознай все строительные позиции на этом фото чека. Верни JSON список." }
         ]
       };
     } else {
       contents = {
         role: 'user',
         parts: [
-          { text: `Разбери эту строительную заметку: "${payload}". Извлеки список материалов и работ в формате JSON.` }
+          { text: `Разбери строительную заметку: "${payload}". Верни JSON список материалов и работ.` }
         ]
       };
     }
@@ -74,7 +82,12 @@ export const onRequestPost = async (context: { request: Request; env: Env }) => 
     });
 
     const output = response.text;
-    if (!output) throw new Error("ИИ вернул пустой результат");
+    if (!output) {
+      return new Response(
+        JSON.stringify({ error: "AI_EMPTY_RESPONSE", message: "ИИ не смог распознать данные. Попробуйте другое фото." }), 
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    }
 
     return new Response(output, {
       headers: { "Content-Type": "application/json" }
@@ -82,9 +95,13 @@ export const onRequestPost = async (context: { request: Request; env: Env }) => 
 
   } catch (err: any) {
     console.error("Worker Execution Error:", err);
+    const isOverloaded = err.message?.includes('503') || err.message?.includes('overloaded');
     return new Response(
-      JSON.stringify({ error: err.message || "Ошибка при обработке запроса ИИ" }), 
-      { status: 500, headers: { "Content-Type": "application/json" } }
+      JSON.stringify({ 
+        error: isOverloaded ? "AI_OVERLOADED" : "AI_ERROR", 
+        message: isOverloaded ? "Сервер ИИ перегружен. Повтор через несколько секунд..." : (err.message || "Ошибка при обработке запроса ИИ") 
+      }), 
+      { status: isOverloaded ? 503 : 500, headers: { "Content-Type": "application/json" } }
     );
   }
 };
