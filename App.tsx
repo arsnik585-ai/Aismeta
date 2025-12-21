@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Project, Entry, EntryType } from './types';
-import { getProjects, saveProject, getEntriesByProject, saveEntry, getSyncQueue, removeFromSyncQueue, deleteProject, deleteEntry, generateId, getFullProjectData, initDB } from './db';
-import { processImage, processVoice } from './geminiService';
+import { getProjects, saveProject, getEntriesByProject, saveEntry, getSyncQueue, removeFromSyncQueue, deleteProject, deleteEntry, generateId, initDB } from './db';
+import { BuildFlowAssistant } from './geminiService';
 import Dashboard from './components/Dashboard';
 import ProjectDetail from './components/ProjectDetail';
 import Header from './components/Header';
@@ -67,21 +67,23 @@ const App: React.FC = () => {
         let errorMsg: string | null = null;
 
         try {
-          const result = item.type === 'PHOTO' 
-            ? await processImage(item.payload) 
-            : await processVoice(item.payload);
+          aiResult = item.type === 'PHOTO' 
+            ? await BuildFlowAssistant.analyzeReceipt(item.payload) 
+            : await BuildFlowAssistant.analyzeVoiceNote(item.payload);
           
-          aiResult = Array.isArray(result) ? result : [];
-          if (aiResult.length === 0) errorMsg = "Позиции не найдены";
+          if (!Array.isArray(aiResult) || aiResult.length === 0) {
+            errorMsg = "Ассистент не обнаружил позиций";
+          }
         } catch (e: any) {
           console.error("[SYNC_ERROR]", e);
-          errorMsg = e.message || "Ошибка ИИ";
+          errorMsg = e.message || "Технический сбой ИИ";
         }
 
         const db = await initDB();
         const tx = db.transaction(['entries'], 'readwrite');
         const store = tx.objectStore('entries');
 
+        // Обработка результата
         if (errorMsg) {
           const entry = await new Promise<Entry | undefined>((resolve) => {
             const req = store.get(item.entryId);
@@ -96,11 +98,13 @@ const App: React.FC = () => {
             });
           }
         } else {
+          // Удаляем временную запись (индикатор анализа)
           await new Promise((resolve) => {
             const req = store.delete(item.entryId);
             req.onsuccess = resolve;
           });
 
+          // Сохраняем новые позиции от ассистента
           for (const data of aiResult) {
             const newEntry: Entry = {
               id: generateId(),
@@ -108,13 +112,13 @@ const App: React.FC = () => {
               date: Date.now(),
               processed: true,
               archived: false,
-              name: data.name || 'Без названия',
+              name: data.name || 'Позиция без названия',
               type: data.type === 'LABOR' ? EntryType.LABOR : EntryType.MATERIAL,
-              quantity: data.quantity || 0,
+              quantity: data.quantity || 1,
               unit: data.unit || 'шт',
               price: data.price || 0,
-              total: data.total || ((data.quantity || 0) * (data.price || 0)) || 0,
-              vendor: data.vendor || null,
+              total: data.total || ((data.quantity || 1) * (data.price || 0)),
+              vendor: data.vendor || (item.type === 'PHOTO' ? 'По чеку' : 'Голос'),
               images: item.type === 'PHOTO' ? [item.payload] : []
             };
             await new Promise((resolve) => {
