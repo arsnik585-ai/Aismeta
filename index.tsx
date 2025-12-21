@@ -5,8 +5,9 @@ import App from './App';
 // Регистрация Service Worker для PWA
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    // Используем абсолютный путь для корректной регистрации из любой точки приложения
-    navigator.serviceWorker.register('/sw.js')
+    // Используем './sw.js' для гарантии относительного пути в изолированных средах.
+    // Это предотвращает попытки браузера искать файл в корне основного домена (ai.studio).
+    navigator.serviceWorker.register('./sw.js')
       .then(reg => console.log('SW registered:', reg.scope))
       .catch(err => console.error('SW registration failed:', err));
   });

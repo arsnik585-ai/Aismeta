@@ -2,8 +2,9 @@ import { GoogleGenAI, Type } from "@google/genai";
 
 /**
  * BuildFlow AI Service
- * Strictly adheres to Google GenAI Coding Guidelines.
- * Diagnostic logs added to help user identify environment configuration issues.
+ * Strictly adheres to Google GenAI Coding Guidelines:
+ * 1. Uses process.env.API_KEY for initialization.
+ * 2. Uses gemini-3-flash-preview model.
  */
 
 const SYSTEM_INSTRUCTION = `Вы — ведущий инженер BuildFlow AI. 
@@ -29,20 +30,25 @@ const ITEM_SCHEMA = {
   }
 };
 
-const validateApiKey = () => {
+/**
+ * Validates the API key presence and provides helpful debugging info for Cloudflare users.
+ */
+const getValidatedKey = () => {
   const key = process.env.API_KEY;
-  if (!key || key === "undefined" || key.length < 10) {
-    console.error("CRITICAL: process.env.API_KEY is missing or invalid in the browser context.");
-    throw new Error("API_KEY_NOT_FOUND: Ключ API не найден в окружении браузера. Проверьте настройки сборки.");
+  if (!key || key === 'undefined' || key.length < 5) {
+    console.error("ENVIRONMENT ERROR: process.env.API_KEY is not available in the browser.");
+    console.warn("SOLUTION: Cloudflare Pages needs the API_KEY injected at BUILD TIME.");
+    console.warn("Update your build command to: export API_KEY=$API_KEY && npm run build");
+    throw new Error("MISSING_API_KEY: Системе не удалось обнаружить API ключ в браузере.");
   }
   return key;
 };
 
 export const processImage = async (base64Image: string) => {
-  const apiKey = validateApiKey();
+  const apiKey = getValidatedKey();
   const ai = new GoogleGenAI({ apiKey });
   
-  console.log("AI_BOOT: Initializing gemini-3-flash-preview for image processing...");
+  console.log("BUILDFLOW_AI: Processing receipt image...");
 
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
@@ -63,21 +69,21 @@ export const processImage = async (base64Image: string) => {
   });
 
   const text = response.text;
-  if (!text) throw new Error("ИИ вернул пустой ответ.");
+  if (!text) throw new Error("AI returned an empty response.");
   
   try {
     return JSON.parse(text);
   } catch (e) {
     console.error("JSON Parse Error:", text);
-    throw new Error("Ошибка парсинга ответа ИИ.");
+    throw new Error("Ошибка обработки данных ИИ.");
   }
 };
 
 export const processVoice = async (transcript: string) => {
-  const apiKey = validateApiKey();
+  const apiKey = getValidatedKey();
   const ai = new GoogleGenAI({ apiKey });
   
-  console.log("AI_BOOT: Initializing gemini-3-flash-preview for voice transcript...");
+  console.log("BUILDFLOW_AI: Processing voice transcript...");
 
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
@@ -95,12 +101,12 @@ export const processVoice = async (transcript: string) => {
   });
 
   const text = response.text;
-  if (!text) throw new Error("ИИ вернул пустой ответ.");
+  if (!text) throw new Error("AI returned an empty response.");
   
   try {
     return JSON.parse(text);
   } catch (e) {
     console.error("JSON Parse Error:", text);
-    throw new Error("Ошибка парсинга ответа ИИ.");
+    throw new Error("Ошибка обработки данных ИИ.");
   }
 };

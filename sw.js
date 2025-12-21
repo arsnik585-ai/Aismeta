@@ -1,8 +1,8 @@
-const CACHE_NAME = 'buildflow-v4';
+const CACHE_NAME = 'buildflow-v5';
 const ASSETS = [
-  '/',
-  '/index.html',
-  '/manifest.json'
+  './',
+  'index.html',
+  'manifest.json'
 ];
 
 self.addEventListener('install', (event) => {
@@ -29,7 +29,7 @@ self.addEventListener('fetch', (event) => {
     caches.match(event.request).then((response) => {
       return response || fetch(event.request).catch(() => {
         if (event.request.mode === 'navigate') {
-          return caches.match('/');
+          return caches.match('./');
         }
       });
     })
