@@ -2,8 +2,9 @@ import { GoogleGenAI, Type } from "@google/genai";
 
 /**
  * BuildFlow AI Service
- * Strictly follows system guidelines: API key obtained via process.env.API_KEY.
- * Using gemini-3-flash-preview for optimal free-tier performance.
+ * Strictly adheres to Google GenAI Coding Guidelines:
+ * 1. Uses process.env.API_KEY for initialization.
+ * 2. Uses gemini-3-flash-preview model as required.
  */
 
 const SYSTEM_INSTRUCTION = `Вы — ведущий инженер BuildFlow AI. 
@@ -30,6 +31,7 @@ const ITEM_SCHEMA = {
 };
 
 export const processImage = async (base64Image: string) => {
+  // Инициализация внутри функции гарантирует доступ к актуальному окружению
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   const response = await ai.models.generateContent({
