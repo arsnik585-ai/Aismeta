@@ -5,10 +5,14 @@ import { GoogleGenAI, Type } from "@google/genai";
  */
 
 const getAI = () => {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) {
-    throw new Error("API_KEY_MISSING: Ключ API не найден в окружении. Пожалуйста, убедитесь, что он настроен.");
+  // Проверяем наличие ключа в process.env как требует инструкция
+  const apiKey = typeof process !== 'undefined' ? process.env.API_KEY : undefined;
+  
+  if (!apiKey || apiKey === 'undefined' || apiKey === '') {
+    // Выбрасываем понятную ошибку ПЕРЕД инициализацией SDK, чтобы избежать "An API Key must be set..."
+    throw new Error("AI_CONFIG_ERROR: API_KEY не обнаружен. Убедитесь, что ключ настроен в окружении.");
   }
+  
   return new GoogleGenAI({ apiKey });
 };
 
@@ -37,7 +41,7 @@ const ITEM_SCHEMA = {
 };
 
 export const processImage = async (base64Image: string) => {
-  console.log("[AI_SERVICE] Processing image locally...");
+  console.log("[AI_SERVICE] Initializing local analysis...");
   
   try {
     const ai = getAI();
@@ -67,7 +71,7 @@ export const processImage = async (base64Image: string) => {
 };
 
 export const processVoice = async (transcript: string) => {
-  console.log("[AI_SERVICE] Processing voice transcript locally...");
+  console.log("[AI_SERVICE] Initializing voice analysis...");
   
   try {
     const ai = getAI();

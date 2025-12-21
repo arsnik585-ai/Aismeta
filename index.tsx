@@ -2,20 +2,15 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 
-// Регистрация Service Worker упрощена для избежания ошибок в песочницах
+// В средах песочниц (как AI Studio) Service Worker часто вызывает ошибки Origin Mismatch или Invalid URL.
+// Отключаем его регистрацию для обеспечения стабильной работы основного функционала приложения.
+/*
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    // Используем простой относительный путь, чтобы избежать ошибок URL и Origin
-    navigator.serviceWorker.register('./sw.js')
-      .then(reg => {
-        console.log('[PWA] Service Worker registered:', reg.scope);
-      })
-      .catch(err => {
-        // Игнорируем ошибки регистрации в среде разработки/песочнице
-        console.debug('[PWA] Service Worker registration skipped (normal for this environment)');
-      });
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
   });
 }
+*/
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
