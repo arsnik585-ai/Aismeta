@@ -35,3 +35,19 @@ export interface Project {
   archived?: boolean;
   incomes?: Income[];
 }
+
+export interface AppSettings {
+  theme: 'coding' | 'midnight' | 'gray';
+  labels: {
+    materialTab: string;
+    laborTab: string;
+    addBtn: string;
+    totalLabel: string;
+    quantityLabel: string;
+    unitLabel: string;
+    priceLabel: string;
+    archiveLabel: string;
+    reportLabel: string;
+    deleteLabel: string;
+  };
+}

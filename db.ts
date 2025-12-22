@@ -1,8 +1,24 @@
 
-import { Project, Entry } from './types';
+import { Project, Entry, AppSettings } from './types';
 
 const DB_NAME = 'SmetaDB';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
+
+export const DEFAULT_SETTINGS: AppSettings = {
+  theme: 'coding',
+  labels: {
+    materialTab: 'МАТЕРИАЛЫ',
+    laborTab: 'РАБОТЫ',
+    addBtn: 'ДОБАВИТЬ',
+    totalLabel: 'ИТОГО',
+    quantityLabel: 'Кол-во',
+    unitLabel: 'Ед.изм',
+    priceLabel: 'Цена',
+    archiveLabel: 'В АРХИВ',
+    reportLabel: 'ОТЧЕТ',
+    deleteLabel: 'УДАЛИТЬ'
+  }
+};
 
 export const generateId = () => {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -14,7 +30,7 @@ export const generateId = () => {
 export const initDB = (): Promise<IDBDatabase> => {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
-    request.onupgradeneeded = () => {
+    request.onupgradeneeded = (event: any) => {
       const db = request.result;
       if (!db.objectStoreNames.contains('projects')) {
         db.createObjectStore('projects', { keyPath: 'id' });
@@ -23,9 +39,32 @@ export const initDB = (): Promise<IDBDatabase> => {
         const entryStore = db.createObjectStore('entries', { keyPath: 'id' });
         entryStore.createIndex('projectId', 'projectId', { unique: false });
       }
+      if (!db.objectStoreNames.contains('settings')) {
+        db.createObjectStore('settings', { keyPath: 'id' });
+      }
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
+  });
+};
+
+export const getSettings = async (): Promise<AppSettings> => {
+  const db = await initDB();
+  return new Promise((resolve) => {
+    const tx = db.transaction('settings', 'readonly');
+    const request = tx.objectStore('settings').get('global');
+    request.onsuccess = () => resolve(request.result || DEFAULT_SETTINGS);
+    request.onerror = () => resolve(DEFAULT_SETTINGS);
+  });
+};
+
+export const saveSettings = async (settings: AppSettings) => {
+  const db = await initDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('settings', 'readwrite');
+    tx.objectStore('settings').put({ ...settings, id: 'global' });
+    tx.oncomplete = () => resolve(true);
+    tx.onerror = () => reject(tx.error);
   });
 };
 

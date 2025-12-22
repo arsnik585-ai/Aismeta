@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Project, Entry, EntryType } from '../types';
+import { Project, Entry, EntryType, AppSettings } from '../types';
 import { getEntriesByProject, saveEntry, deleteEntry, generateId } from '../db';
 
 interface ProjectDetailProps {
@@ -8,6 +8,8 @@ interface ProjectDetailProps {
   initialAction?: string | null;
   activeTab: EntryType;
   onDataChange: () => void;
+  settings: AppSettings;
+  onTabChange: (tab: EntryType) => void;
 }
 
 const COMMON_UNITS = ['шт', 'м²', 'м³', 'м.п.', 'кг', 'т', 'компл.', 'усл. ед.', 'час', 'смена'];
@@ -53,10 +55,12 @@ const EntryCard: React.FC<{
     onTypeToggle: (id: string) => void;
     onShowFullscreen: (img: string, entryId: string, photoIdx: number) => void;
     onMove: (index: number, direction: 'up' | 'down') => void;
-}> = ({ e, index, totalCount, onUpdate, onDelete, onTypeToggle, onShowFullscreen, onMove }) => {
+    settings: AppSettings;
+}> = ({ e, index, totalCount, onUpdate, onDelete, onTypeToggle, onShowFullscreen, onMove, settings }) => {
     const [showMenu, setShowMenu] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [isDefaultQty, setIsDefaultQty] = useState(e.quantity === null);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -71,7 +75,8 @@ const EntryCard: React.FC<{
     const handleChange = (fields: Partial<Entry>) => {
         const updated = { ...e, ...fields };
         if ('quantity' in fields || 'price' in fields) {
-            updated.total = (updated.quantity || 0) * (updated.price || 0);
+            const q = updated.quantity === null ? 1 : updated.quantity;
+            updated.total = q * (updated.price || 0);
         }
         onUpdate(updated);
     };
@@ -136,11 +141,11 @@ const EntryCard: React.FC<{
                           <div className="absolute right-0 top-6 w-36 bg-slate-800 border border-slate-700 rounded-lg shadow-2xl py-1 z-20 animate-in fade-in zoom-in-95 duration-75 origin-top-right">
                               <button onClick={(ev) => { ev.stopPropagation(); onTypeToggle(e.id); setShowMenu(false); }} className="w-full text-left px-2 py-1.5 text-[8px] font-bold text-slate-300 hover:bg-slate-700 uppercase tracking-widest flex items-center gap-1.5">
                                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" strokeWidth={2}/></svg>
-                                  {e.type === EntryType.MATERIAL ? 'В РАБОТЫ' : 'В МАТЕРИАЛЫ'}
+                                  {e.type === EntryType.MATERIAL ? `В ${settings.labels.laborTab.toUpperCase()}` : `В ${settings.labels.materialTab.toUpperCase()}`}
                               </button>
                               <button onClick={(ev) => { ev.stopPropagation(); onDelete(e.id); setShowMenu(false); }} className="w-full text-left px-2 py-1.5 text-[8px] font-bold text-red-400 hover:bg-red-950/30 uppercase tracking-widest flex items-center gap-1.5">
                                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                  УДАЛИТЬ
+                                  {settings.labels.deleteLabel.toUpperCase()}
                               </button>
                           </div>
                       )}
@@ -150,17 +155,26 @@ const EntryCard: React.FC<{
 
             <div className="grid grid-cols-3 gap-1 bg-slate-950/40 p-1.5 rounded-lg border border-slate-800/40">
                 <div className="space-y-0">
-                    <span className="block text-[7px] text-slate-300 font-mono uppercase tracking-tighter font-bold">Кол-во</span>
+                    <span className="block text-[7px] text-slate-300 font-mono uppercase tracking-tighter font-bold">{settings.labels.quantityLabel}</span>
                     <input 
                         type="number" 
                         value={e.quantity === null ? '' : e.quantity}
-                        onChange={(evt) => handleChange({ quantity: evt.target.value === '' ? null : parseFloat(evt.target.value) })}
+                        onFocus={(evt) => { 
+                            if(isDefaultQty) {
+                                evt.target.value = '';
+                                setIsDefaultQty(false);
+                            }
+                        }}
+                        onChange={(evt) => {
+                            const val = evt.target.value === '' ? null : parseFloat(evt.target.value);
+                            handleChange({ quantity: val });
+                        }}
                         className="w-full bg-transparent text-[14px] text-white font-bold outline-none tabular-nums"
-                        placeholder="0"
+                        placeholder="1"
                     />
                 </div>
                 <div className="space-y-0">
-                    <span className="block text-[7px] text-slate-300 font-mono uppercase tracking-tighter font-bold">Ед.изм</span>
+                    <span className="block text-[7px] text-slate-300 font-mono uppercase tracking-tighter font-bold">{settings.labels.unitLabel}</span>
                     <input 
                         list={`units-${e.id}`}
                         value={e.unit || ''}
@@ -173,7 +187,7 @@ const EntryCard: React.FC<{
                     </datalist>
                 </div>
                 <div className="space-y-0">
-                    <span className="block text-[7px] text-slate-300 font-mono uppercase tracking-tighter font-bold">Цена (₽)</span>
+                    <span className="block text-[7px] text-slate-300 font-mono uppercase tracking-tighter font-bold">{settings.labels.priceLabel} (₽)</span>
                     <input 
                         type="number" 
                         value={e.price === null ? '' : e.price}
@@ -186,7 +200,7 @@ const EntryCard: React.FC<{
 
             <div className="flex items-center gap-2 pt-1 border-t border-slate-800/20">
                 <div className="text-left shrink-0 min-w-[70px]">
-                    <span className="block text-[6px] text-slate-400 font-mono uppercase tracking-widest leading-none font-bold">ИТОГО</span>
+                    <span className="block text-[6px] text-slate-400 font-mono uppercase tracking-widest leading-none font-bold">{settings.labels.totalLabel}</span>
                     <div className="text-[14px] font-bold text-white tabular-nums tracking-tighter leading-none mt-0.5">
                         {(e.total || 0).toLocaleString()} <span className="text-[8px] opacity-40 font-normal">₽</span>
                     </div>
@@ -216,9 +230,10 @@ const EntryCard: React.FC<{
     );
 };
 
-const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, activeTab, onDataChange }) => {
+const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, activeTab, onDataChange, settings, onTabChange }) => {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [fullscreenData, setFullscreenData] = useState<{ img: string, entryId: string, idx: number } | null>(null);
+  const touchStartRef = useRef<number | null>(null);
 
   const loadEntries = async () => {
     try {
@@ -292,13 +307,9 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, activeTab, onDat
     if (targetIndex < 0 || targetIndex >= currentTabEntries.length) return;
 
     const newTabEntries = [...currentTabEntries];
-    // Swap
     [newTabEntries[index], newTabEntries[targetIndex]] = [newTabEntries[targetIndex], newTabEntries[index]];
 
-    // Re-assign orders
     const finalizedTabEntries = newTabEntries.map((item, i) => ({ ...item, order: i }));
-    
-    // Merge back
     const otherEntries = entries.filter(e => e.type !== activeTab);
     const finalizedAll = [...otherEntries, ...finalizedTabEntries].sort((a,b) => (a.order ?? 0) - (b.order ?? 0));
 
@@ -311,12 +322,34 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, activeTab, onDat
 
   const sectionTotal = entries
     .filter(e => e.type === activeTab)
-    .reduce((sum, e) => sum + (e.total || 0), 0);
+    .reduce((sum, e) => {
+      const q = e.quantity === null ? 1 : e.quantity;
+      return sum + (q * (e.price || 0));
+    }, 0);
 
   const currentTabEntries = entries.filter(e => e.type === activeTab);
 
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartRef.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartRef.current === null) return;
+    const deltaX = e.changedTouches[0].clientX - touchStartRef.current;
+    if (deltaX > 70) { 
+      onTabChange(EntryType.MATERIAL);
+    } else if (deltaX < -70) {
+      onTabChange(EntryType.LABOR);
+    }
+    touchStartRef.current = null;
+  };
+
   return (
-    <div className="flex flex-col h-full pt-0.5">
+    <div 
+      className="flex flex-col h-full pt-0.5 select-none touch-pan-y"
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
       <div className="flex-1 overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-2 pb-28 px-1 no-scrollbar">
         {currentTabEntries.map((e, idx) => (
             <EntryCard 
@@ -329,6 +362,7 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, activeTab, onDat
               onTypeToggle={handleEntryTypeToggle}
               onShowFullscreen={(img, eid, pidx) => setFullscreenData({ img, entryId: eid, idx: pidx })}
               onMove={handleMoveEntry}
+              settings={settings}
             />
         ))}
         {currentTabEntries.length === 0 && (
@@ -344,7 +378,7 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, activeTab, onDat
         style={{ paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom))' }}
       >
           <div className="flex flex-col pl-2">
-              <span className="text-[6px] text-slate-300 font-mono uppercase tracking-[0.2em] mb-0.5 font-bold">_ИТОГО {activeTab === EntryType.MATERIAL ? 'МАТ' : 'РАБ'}_</span>
+              <span className="text-[6px] text-slate-300 font-mono uppercase tracking-[0.2em] mb-0.5 font-bold">_{settings.labels.totalLabel} {activeTab === EntryType.MATERIAL ? settings.labels.materialTab.substring(0,3).toUpperCase() : settings.labels.laborTab.substring(0,3).toUpperCase()}_</span>
               <div className="text-base font-bold text-white tracking-tighter tabular-nums leading-none">
                   {sectionTotal.toLocaleString()} <span className="text-[9px] text-emerald-500 font-normal">₽</span>
               </div>
@@ -355,7 +389,7 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, activeTab, onDat
             className="bg-emerald-600 h-10 px-6 rounded-lg font-bold text-white shadow-lg uppercase text-[8px] tracking-widest active:scale-95 transition-all flex items-center gap-2"
           >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4" strokeWidth={3}/></svg>
-            ДОБАВИТЬ
+            {settings.labels.addBtn}
           </button>
       </div>
 
@@ -373,7 +407,7 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, activeTab, onDat
                 className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold uppercase text-[10px] tracking-widest shadow-xl flex items-center justify-center gap-2"
             >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" strokeWidth={2}/></svg>
-                Удалить
+                {settings.labels.deleteLabel}
             </button>
             <button 
                 onClick={() => setFullscreenData(null)}

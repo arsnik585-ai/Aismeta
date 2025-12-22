@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Project, Income } from '../types';
+import { Project, Income, AppSettings } from '../types';
 import { saveProject, generateId } from '../db';
 
 interface DashboardProps {
@@ -16,6 +16,7 @@ interface DashboardProps {
   onShare: (p: Project, format: 'text' | 'html' | 'json') => void;
   onQuickAction: (p: Project, action: string) => void;
   viewingArchive: boolean;
+  settings: AppSettings;
 }
 
 const ProjectCard: React.FC<{
@@ -34,7 +35,8 @@ const ProjectCard: React.FC<{
   onMove: (index: number, direction: 'up' | 'down') => void;
   onBudgetClick: (p: Project) => void;
   isArchivedView: boolean;
-}> = ({ p, index, totalCount, mTotal, lTotal, onSelect, onArchiveToggle, onDelete, onRenameStart, onShareClick, onDuplicate, onQuickAction, onMove, onBudgetClick, isArchivedView }) => {
+  settings: AppSettings;
+}> = ({ p, index, totalCount, mTotal, lTotal, onSelect, onArchiveToggle, onDelete, onRenameStart, onShareClick, onDuplicate, onQuickAction, onMove, onBudgetClick, isArchivedView, settings }) => {
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -88,65 +90,74 @@ const ProjectCard: React.FC<{
                 </div>
               )}
 
-              <div className="relative" ref={menuRef}>
+              {isArchivedView ? (
                 <button 
-                  onClick={toggleMenu}
-                  className="p-1 text-slate-300 hover:text-white transition-colors rounded hover:bg-slate-800"
+                  onClick={(e) => { e.stopPropagation(); onArchiveToggle(p.id); }}
+                  className="px-2 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-md text-[8px] font-bold uppercase tracking-widest active:scale-95 transition-all shadow-md"
                 >
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
-                  </svg>
+                  ВОССТАНОВИТЬ
                 </button>
+              ) : (
+                <div className="relative" ref={menuRef}>
+                  <button 
+                    onClick={toggleMenu}
+                    className="p-1 text-slate-300 hover:text-white transition-colors rounded hover:bg-slate-800"
+                  >
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
+                    </svg>
+                  </button>
 
-                {showMenu && (
-                  <div className="absolute right-0 mt-1 w-36 bg-slate-800 border border-slate-700 rounded-lg shadow-2xl py-1 z-50 animate-in fade-in zoom-in-95 duration-100 origin-top-right">
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); onRenameStart(p); setShowMenu(false); }}
-                      className="w-full text-left px-2.5 py-1.5 text-[9px] font-bold text-slate-300 hover:bg-slate-700 flex items-center gap-2 uppercase tracking-widest"
-                    >
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" strokeWidth={2}/></svg>
-                      ПРАВКА
-                    </button>
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); onDuplicate(p); setShowMenu(false); }}
-                      className="w-full text-left px-2.5 py-1.5 text-[9px] font-bold text-slate-300 hover:bg-slate-700 flex items-center gap-2 uppercase tracking-widest"
-                    >
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" /></svg>
-                      КОПИЯ
-                    </button>
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); onArchiveToggle(p.id); setShowMenu(false); }}
-                      className="w-full text-left px-2.5 py-1.5 text-[9px] font-bold text-amber-400 hover:bg-amber-950/30 flex items-center gap-2 uppercase tracking-widest"
-                    >
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
-                      {isArchivedView ? 'ВЕРНУТЬ' : 'АРХИВ'}
-                    </button>
-                    {!isArchivedView && (
+                  {showMenu && (
+                    <div className="absolute right-0 mt-1 w-36 bg-slate-800 border border-slate-700 rounded-lg shadow-2xl py-1 z-50 animate-in fade-in zoom-in-95 duration-100 origin-top-right">
                       <button 
-                        onClick={(e) => { e.stopPropagation(); onShareClick(p); setShowMenu(false); }}
-                        className="w-full text-left px-2.5 py-1.5 text-[9px] font-bold text-emerald-400 hover:bg-emerald-950/30 flex items-center gap-2 uppercase tracking-widest"
+                        onClick={(e) => { e.stopPropagation(); onRenameStart(p); setShowMenu(false); }}
+                        className="w-full text-left px-2.5 py-1.5 text-[9px] font-bold text-slate-300 hover:bg-slate-700 flex items-center gap-2 uppercase tracking-widest"
                       >
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
-                        ОТЧЕТ
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" strokeWidth={2}/></svg>
+                        ПРАВКА
                       </button>
-                    )}
-                    <div className="h-px bg-slate-700 my-0.5 mx-1.5"></div>
-                    <button 
-                      onClick={(e) => { 
-                        e.stopPropagation(); 
-                        onDelete(p.id);
-                        setShowMenu(false);
-                      }}
-                      className="w-full text-left px-2.5 py-1.5 text-[9px] font-bold text-red-400 hover:bg-red-950/30 flex items-center gap-2 uppercase tracking-widest"
-                    >
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                      УДАЛИТЬ
-                    </button>
-                  </div>
-                )}
-              </div>
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); onDuplicate(p); setShowMenu(false); }}
+                        className="w-full text-left px-2.5 py-1.5 text-[9px] font-bold text-slate-300 hover:bg-slate-700 flex items-center gap-2 uppercase tracking-widest"
+                      >
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" /></svg>
+                        КОПИЯ
+                      </button>
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); onArchiveToggle(p.id); setShowMenu(false); }}
+                        className="w-full text-left px-2.5 py-1.5 text-[9px] font-bold text-amber-400 hover:bg-amber-950/30 flex items-center gap-2 uppercase tracking-widest"
+                      >
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
+                        {isArchivedView ? 'ВЕРНУТЬ' : settings.labels.archiveLabel.toUpperCase()}
+                      </button>
+                      {!isArchivedView && (
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); onShareClick(p); setShowMenu(false); }}
+                          className="w-full text-left px-2.5 py-1.5 text-[9px] font-bold text-emerald-400 hover:bg-emerald-950/30 flex items-center gap-2 uppercase tracking-widest"
+                        >
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+                          {settings.labels.reportLabel.toUpperCase()}
+                        </button>
+                      )}
+                      <div className="h-px bg-slate-700 my-0.5 mx-1.5"></div>
+                      <button 
+                        onClick={(e) => { 
+                          e.stopPropagation(); 
+                          onDelete(p.id);
+                          setShowMenu(false);
+                        }}
+                        className="w-full text-left px-2.5 py-1.5 text-[9px] font-bold text-red-400 hover:bg-red-950/30 flex items-center gap-2 uppercase tracking-widest"
+                      >
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                        {settings.labels.deleteLabel.toUpperCase()}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
@@ -162,13 +173,13 @@ const ProjectCard: React.FC<{
         <div className="flex items-end justify-between mt-2 pt-2 border-t border-slate-800">
            <div className="text-left flex flex-col gap-0.5">
               <div className="leading-none">
-                <span className="inline-block text-[6px] text-slate-400 font-mono tracking-tighter uppercase mr-1 font-bold">МАТ:</span>
+                <span className="inline-block text-[6px] text-slate-400 font-mono tracking-tighter uppercase mr-1 font-bold">{settings.labels.materialTab.substring(0,3).toUpperCase()}:</span>
                 <span className="text-[12px] font-bold text-emerald-500/80 tabular-nums">
                   {mTotal.toLocaleString()} <span className="text-[8px] opacity-40 font-normal">₽</span>
                 </span>
               </div>
               <div className="leading-none">
-                <span className="inline-block text-[6px] text-slate-400 font-mono tracking-tighter uppercase mr-1 font-bold">РАБ:</span>
+                <span className="inline-block text-[6px] text-slate-400 font-mono tracking-tighter uppercase mr-1 font-bold">{settings.labels.laborTab.substring(0,3).toUpperCase()}:</span>
                 <span className="text-[12px] font-bold text-cyan-500/80 tabular-nums">
                   {lTotal.toLocaleString()} <span className="text-[8px] opacity-40 font-normal">₽</span>
                 </span>
@@ -211,7 +222,8 @@ const Dashboard: React.FC<DashboardProps> = ({
   onRename, 
   onShare,
   onQuickAction,
-  viewingArchive
+  viewingArchive,
+  settings
 }) => {
   const [projects, setProjects] = useState<Project[]>(initialProjects);
   const [isAdding, setIsAdding] = useState(false);
@@ -296,7 +308,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     <div className="space-y-3">
       <div className="flex justify-between items-center px-1">
         <h2 className="text-base font-bold coding-font text-emerald-500 uppercase tracking-tighter">
-          {viewingArchive ? '_АРХИВ' : '_ПРОЕКТЫ'}
+          {viewingArchive ? `_${settings.labels.archiveLabel.toUpperCase()}` : '_ПРОЕКТЫ'}
         </h2>
       </div>
 
@@ -474,6 +486,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             onQuickAction={onQuickAction}
             onMove={handleMoveProject}
             onBudgetClick={setBudgetModalProject}
+            settings={settings}
           />
         )) : (
           <div className="col-span-full py-12 text-center opacity-20 flex flex-col items-center gap-3 border border-dashed border-slate-800 rounded-xl">
