@@ -2,6 +2,27 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 
+// VK Bridge integration
+declare const vkBridge: any;
+
+if (typeof vkBridge !== 'undefined' && vkBridge.supports("VKWebAppInit")) {
+  vkBridge.send("VKWebAppInit");
+
+  // Listener for Safe Areas
+  vkBridge.subscribe((e: any) => {
+    if (e.detail && e.detail.type === 'VKWebAppUpdateConfig') {
+      const { insets } = e.detail.data;
+      if (insets) {
+        const root = document.documentElement;
+        root.style.setProperty('--safe-area-inset-top', `${insets.top}px`);
+        root.style.setProperty('--safe-area-inset-bottom', `${insets.bottom}px`);
+        root.style.setProperty('--safe-area-inset-left', `${insets.left}px`);
+        root.style.setProperty('--safe-area-inset-right', `${insets.right}px`);
+      }
+    }
+  });
+}
+
 // Service Worker Registration for PWA / Offline functionality
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {

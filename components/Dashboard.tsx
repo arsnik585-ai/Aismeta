@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Project, Income, AppSettings } from '../types';
 import { saveProject, generateId } from '../db';
@@ -500,7 +499,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         <div 
           className="fixed z-40"
           style={{ 
-            bottom: 'calc(0.75rem + env(safe-area-inset-bottom))',
+            bottom: 'calc(0.75rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom)))',
             right: '0.75rem'
           }}
         >

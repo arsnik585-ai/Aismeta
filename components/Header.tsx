@@ -1,4 +1,3 @@
-
 import React, { useRef, useState, useEffect } from 'react';
 import { EntryType, AppSettings } from '../types';
 
@@ -43,8 +42,8 @@ const Header: React.FC<HeaderProps> = ({ isDetail, onBack, title, viewingArchive
     <header 
       className="bg-slate-900 border-b border-slate-800 px-4 pb-4 flex items-center justify-between sticky top-0 z-20 w-full"
       style={{ 
-        paddingTop: 'calc(1rem + env(safe-area-inset-top))',
-        minHeight: 'calc(4rem + env(safe-area-inset-top))'
+        paddingTop: 'calc(1rem + var(--safe-area-inset-top, env(safe-area-inset-top)))',
+        minHeight: 'calc(4rem + var(--safe-area-inset-top, env(safe-area-inset-top)))'
       }}
     >
       <div className="flex items-center gap-3 overflow-hidden flex-1">

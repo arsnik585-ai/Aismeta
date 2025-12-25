@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Project, Entry, EntryType, AppSettings } from '../types';
 import { getEntriesByProject, saveEntry, deleteEntry, generateId } from '../db';
@@ -375,7 +374,7 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ project, activeTab, onDat
 
       <div 
         className="fixed bottom-0 left-0 right-0 p-2 bg-slate-950/90 backdrop-blur-2xl border-t border-slate-800/60 flex items-center justify-between z-40 shadow-[0_-10px_40px_rgba(0,0,0,0.6)]"
-        style={{ paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom))' }}
+        style={{ paddingBottom: 'calc(0.5rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom)))' }}
       >
           <div className="flex flex-col pl-2">
               <span className="text-[6px] text-slate-300 font-mono uppercase tracking-[0.2em] mb-0.5 font-bold">_{settings.labels.totalLabel} {activeTab === EntryType.MATERIAL ? settings.labels.materialTab.substring(0,3).toUpperCase() : settings.labels.laborTab.substring(0,3).toUpperCase()}_</span>
